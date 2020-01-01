@@ -1,0 +1,36 @@
+- name: copy deploy key
+  copy: src={{ local_deploy_key_file }} dest={{ remote_deploy_key_file }} mode=0600
+
+- name: install lot-commander repo
+  git: 
+    repo: "{{ application_repository }}"
+    version: "{{ application_repository_version }}"
+    dest: "{{ project_path }}"
+    accept_hostkey: yes
+
+# - name: copy application config file
+#   copy: src={{ application_config_file }} dest={{ project_path }}/config.js
+
+- name: install application config file
+  template: 
+    src: config.j2
+    dest: "{{ project_path }}/config.js"
+
+- name: install npm dependencies
+  npm:
+    ci: yes
+    path: "{{ project_path }}/node_modules"
+
+- name: remove deploy key
+  file: path={{ remote_deploy_key_file }} state=absent
+
+# build commands
+- name: build command
+  command: npm run build-client chdir={{ project_path }}
+
+- name: stop app
+  command: pm2 stop process.json chdir={{ project_path }}
+  ignore_errors: yes
+
+- name: start app
+  command: pm2 start process.json chdir={{ project_path }}

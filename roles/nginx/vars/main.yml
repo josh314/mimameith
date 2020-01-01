@@ -1,0 +1,2 @@
+---
+root: /var/www/{{ server_name }}/html

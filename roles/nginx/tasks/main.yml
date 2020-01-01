@@ -1,0 +1,59 @@
+# Install nginx and configuration file
+
+- name: install nginx
+  apt:
+    name: nginx
+    update_cache: yes
+
+    # TODO: 
+    # create new sites-enabled
+    # remove/unlink default config in sites-enabled
+    # copy new config
+      # set up for HTTPS
+      # serve static assets
+      # reverse proxy app port
+      # allow large uploads > 1MB (for image files) => client_max_body_size 100M;
+      # customize logging?
+    # nginx -t and fail task on error
+    # setup service
+
+    #TODO
+    # - name: create directories for ssl certs
+    #   file: path=/etc/nginx/ssl state=directory
+
+    # - name: copy TLS key
+    #   copy: src=files/nginx.key dest={{ key_file }} owner=root mode=0600
+
+    # - name: copy TLS cert
+    #   copy: src=files/nginx.crt dest={{ cert_file }}
+
+
+# The following two tasks ensure the existence of the placeholder index.html file
+# This file is only there to test the `server_name` server block if no proxying is set up
+- name: create directories for placeholder index file
+  file:
+    path: "{{ root }}"
+    state: directory
+- name: copy root index file
+  template: 
+    src: index.html.j2
+    dest: "{{ root }}/index.html"
+
+# unlink the default config
+- name: remove default configuration
+  file: 
+    dest: /etc/nginx/sites-enabled/default
+    state: absent
+
+# create and enable the custom config file
+- name: render & copy nginx config file
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/sites-available/{{ server_name }}
+- name: enable configuration
+  file: 
+    dest: /etc/nginx/sites-enabled/{{ server_name }}
+    src: /etc/nginx/sites-available/{{ server_name }}
+    state: link
+
+# TODO: ensure proper file permissions for conf and index files
