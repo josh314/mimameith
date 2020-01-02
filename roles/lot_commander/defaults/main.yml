@@ -1,2 +1,3 @@
 ---
 application_repository_version: master
+aws_credentials_dir: /home/{{ ansible_user }}/.aws

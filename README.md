@@ -25,8 +25,8 @@ Alternately, first decrypt:
 
 `ansible-vault decrypt secrets.yml`,
 
-then make your edits and re-encrypt:
+then make your edits in the text editor of your choice. When you are finished editting, re-encrypt:
 
 `ansible-vault encrypt secrets.yml`.
 
-See the help for `ansible-vault` for more options.
+When decrypting/re-encrypting, you actually setting a new password at the second stage so you will have to input the password twice for confirmation. See the help for `ansible-vault` for more options.

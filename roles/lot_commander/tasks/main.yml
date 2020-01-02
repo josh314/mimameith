@@ -8,13 +8,24 @@
     dest: "{{ project_path }}"
     accept_hostkey: yes
 
-# - name: copy application config file
-#   copy: src={{ application_config_file }} dest={{ project_path }}/config.js
-
 - name: install application config file
   template: 
     src: config.j2
     dest: "{{ project_path }}/config.js"
+
+- name: create .aws directory
+  file:
+    path: "{{ aws_credentials_dir }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    state: directory
+
+
+- name: install application AWS credentials
+  template: 
+    src: aws-credentials.j2
+    dest: "{{ aws_credentials_dir }}/credentials"
+    mode: 0644
 
 - name: install npm dependencies
   npm:
