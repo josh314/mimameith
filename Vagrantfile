@@ -26,6 +26,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       ansible.inventory_path = "hosts/vagrant.yml"
       ansible.playbook = "app.yml"
+      ansible.extra_vars = {
+        # remember to use ruby boolean
+        skip_application_auth: true
+      }
+
 
       ######################
       # Vault decryption
