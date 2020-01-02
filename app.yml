@@ -1,5 +1,5 @@
 - name: launch lot-commander app-server
-  hosts: local
+  hosts: app_servers
   vars_files:
     - secrets.yml
   vars:
