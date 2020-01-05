@@ -7,11 +7,18 @@
     version: "{{ application_repository_version }}"
     dest: "{{ project_path }}"
     accept_hostkey: yes
+    force: yes
 
 - name: install application config file
   template: 
     src: config.j2
     dest: "{{ project_path }}/config.js"
+    lstrip_blocks: yes
+
+- name: install pm2 process file
+  template:
+    src: process.json.j2
+    dest: "{{ project_path }}/process.json"
     lstrip_blocks: yes
 
 - name: create .aws directory
