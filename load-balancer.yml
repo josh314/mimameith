@@ -1,0 +1,30 @@
+- name: configure provisioned servers
+  hosts: load_balancers
+
+  tasks:
+
+    - name: Upgrade packages
+      become: yes
+      apt: 
+        upgrade: dist
+        update_cache: yes
+        cache_valid_time: 3600
+
+    # Install nginx and configure as a load balancer for the application servers
+    - import_role:
+        name: nginx
+      become: yes
+      vars:
+        server_name: lots.wholesaleninjas.com
+        upstream_servers: "{{ server_nodes }}"
+
+
+    - name: restart nginx
+      become: yes
+      service: name=nginx state=restarted
+      
+    - name: Clean up packages
+      become: yes
+      apt:
+        autoclean: yes
+        autoremove: yes

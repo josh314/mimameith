@@ -1,0 +1,30 @@
+app_servers:
+  hosts:
+    app_server1:
+      ansible_host: 192.168.33.101
+      # ansible_port: 2222
+      ansible_user: vagrant
+      ansible_ssh_private_key_file: ./.vagrant/machines/app_server1/virtualbox/private_key
+    app_server2:
+      ansible_host: 192.168.33.102
+      # ansible_port: 2222
+      ansible_user: vagrant
+      ansible_ssh_private_key_file: ./.vagrant/machines/app_server2/virtualbox/private_key
+    app_server3:
+      ansible_host: 192.168.33.103
+      # ansible_port: 2222
+      ansible_user: vagrant
+      ansible_ssh_private_key_file: ./.vagrant/machines/app_server3/virtualbox/private_key
+    app_server4:
+      ansible_host: 192.168.33.104
+      # ansible_port: 2222
+      ansible_user: vagrant
+      ansible_ssh_private_key_file: ./.vagrant/machines/app_server4/virtualbox/private_key
+
+load_balancers:
+  hosts:
+    load_balancer:
+      ansible_host: 192.168.33.10
+      # ansible_port: 2222
+      ansible_user: vagrant
+      ansible_ssh_private_key_file: ./.vagrant/machines/load_balancer/virtualbox/private_key
