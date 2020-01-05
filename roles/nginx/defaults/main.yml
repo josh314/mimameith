@@ -1,4 +1,2 @@
 ---
 server_name: localhost
-conf_file: /etc/nginx/sites-available/default
-application_port: 9000

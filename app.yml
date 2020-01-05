@@ -8,9 +8,6 @@
     app_port: 9000
     path: "{{ ansible_env.HOME }}/lot-commander"
     skip_application_auth: false
-    # nginx_conf_file: /etc/nginx/sites-available/lots.wholesaleninjas.com
-
-  # TODO? use nvm
 
   # TODO? use HTTP2
 
@@ -47,18 +44,11 @@
       become: yes
       npm: name=pm2 global=yes production=yes
 
-
-    # TODO? copy pm2 process.json (template?) to remote
-
-
     # TODO: config TLS/SSL
-    # certbot
+    # certbot or self-sign?
 
     # TODO: firewall and opening of ports
       # ufw
-      # nginx conf
-      # ec2 security groups
-
 
     # Install nginx and configure as a reverse proxy for the application
     - import_role:
@@ -66,15 +56,14 @@
       become: yes
       vars:
         server_name: lots.wholesaleninjas.com
-        application_port: "{{ app_port }}"
-        # conf_file: "{{ nginx_conf_file }}"
+        upstream_servers:
+          - localhost:{{ app_port }}
 
     - import_role: 
         name: lot_commander
       vars:
         application_repository: git@gitlab.com:josh314/lot-commander.git
         application_repository_version: "{{ version }}"
-        # application_config_file: "{{ app_config }}"
         application_port: "{{ app_port }}"
         project_path: "{{ path }}"
         local_deploy_key_file: ~/.ssh/aws_deploy_key_ed25519

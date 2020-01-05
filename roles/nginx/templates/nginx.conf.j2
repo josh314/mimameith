@@ -1,5 +1,14 @@
-# installed via nginx ansible role
+# Load balancer settings
 # Author: Joshua "El" Davis <josh@wholesaleninjas.com>
+
+
+#upstream server block for all the app servers
+upstream roundrobin {
+{% for s in upstream_servers %}
+  server {{ s }};
+{% endfor %}
+}
+
 server {
 
   listen 80;
@@ -11,7 +20,7 @@ server {
   index index.html index.htm index.nginx-debian.html;
 
   location / { 
-    proxy_pass http://localhost:{{ application_port }};
+    proxy_pass http://roundrobin;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection 'upgrade';
