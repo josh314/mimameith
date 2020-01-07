@@ -3,7 +3,7 @@
   vars_files:
     - secrets.yml
   vars:
-    version: master
+    app_version: master
     app_config: ~/dev/apps/lot-commander/config-prod.js
     app_port: 9000
     path: "{{ ansible_env.HOME }}/lot-commander"
@@ -63,7 +63,7 @@
         name: lot_commander
       vars:
         application_repository: git@gitlab.com:josh314/lot-commander.git
-        application_repository_version: "{{ version }}"
+        application_repository_version: "{{ app_version }}"
         application_port: "{{ app_port }}"
         project_path: "{{ path }}"
         local_deploy_key_file: ~/.ssh/aws_deploy_key_ed25519

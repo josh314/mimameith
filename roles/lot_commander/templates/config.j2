@@ -72,12 +72,12 @@ module.exports =
     },
     shopify: {
         store: {
-            url: '{{ shopify.ninjas_and_such.url }}',
+            url: '{{ store.url }}',
             auth: {
-                apiKey: '{{ shopify.ninjas_and_such.auth.api_key }}',
-                password: '{{ shopify.ninjas_and_such.auth.password }}',
-                exampleUrl: '{{ shopify.ninjas_and_such.auth.example_url }}',
-                sharedSecret: '{{ shopify.ninjas_and_such.auth.shared_secret }}',
+                apiKey: '{{ store.auth.api_key }}',
+                password: '{{ store.auth.password }}',
+                exampleUrl: '{{ store.auth.example_url }}',
+                sharedSecret: '{{ store.auth.shared_secret }}',
             },
         },
     },

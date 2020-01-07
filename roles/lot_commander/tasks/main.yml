@@ -14,6 +14,8 @@
     src: config.j2
     dest: "{{ project_path }}/config.js"
     lstrip_blocks: yes
+  vars:
+    store: "{{ shopify[shopify_store] }}"
 
 - name: install pm2 process file
   template:

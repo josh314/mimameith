@@ -1,7 +1,7 @@
 - [ ] lot commander role
   - [*] AWS credentials on remote (S3 access)
-  - [ ] git repo branch
-  - [ ] don't hardcode in the Shopify store
+  - [*] git repo branch
+  - [*] don't hardcode in the Shopify store
   - [ ] app config file
     - [*] ability to toggle skipAuth
     - [ ] environment
@@ -9,10 +9,13 @@
     - [ ] config file
     - [ ] build command
   - [ ] use private/public IP for database depending on environment
+  - [*] session secret envvar
 
 - [ ] ec2 provisioning
+  - [ ] bionic AMI
   - [ ] security groups
   - [ ] DNS
+  - [ ] monitoring (cloudwatch)
 
 - [ ] SSL/TLS
   - [ ] certbot
@@ -26,3 +29,10 @@
 - [ ] test behavior on reboot
   - [ ] nginx
   - [ ] pm2 lot-commander
+
+- [ ] restart machine (required by updates)
+
+- [ ] load balancer
+  - [*] nginx, obvs
+    - [*] config task
+  - [ ] certbot
