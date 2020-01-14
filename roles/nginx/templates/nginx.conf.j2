@@ -9,10 +9,24 @@ upstream roundrobin {
 {% endfor %}
 }
 
+{% if tls_enabled %}
 server {
-
   listen 80;
   listen [::]:80 ipv6only=on;
+
+  return 301 https://$server_addr$request_uri;
+}
+{% endif %}
+
+server {
+  {% if tls_enabled %}
+  listen 443 ssl default_server;
+  ssl_certificate {{ cert_file }};
+  ssl_certificate_key {{ key_file }};
+  {% else %}
+  listen 80;
+  listen [::]:80 ipv6only=on;
+  {% endif %}
 
   server_name {{ server_name }};
 
