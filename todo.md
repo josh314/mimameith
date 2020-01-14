@@ -12,10 +12,15 @@
   - [*] session secret envvar
 
 - [ ] ec2 provisioning
-  - [ ] bionic AMI
+  - [ ] AMI
+  - [ ] instance type
   - [ ] security groups
   - [ ] DNS
+  - [*] elastic IP for load balancer
   - [ ] monitoring (cloudwatch)
+  - [ ] wait longer before moving on to instance playbooks
+    - [ ] update packages task (apt) fails when instance has just been provisioned
+    
 
 - [ ] SSL/TLS
   - [ ] certbot
@@ -35,4 +40,9 @@
 - [ ] load balancer
   - [*] nginx, obvs
     - [*] config task
+  - [ ] proxy to 443 on app servers
   - [ ] certbot
+
+- [ ] app servers
+  - [ ] self-signed certs
+  - [ ] setup nginx for certs

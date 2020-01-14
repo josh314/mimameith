@@ -28,7 +28,7 @@ APP_SERVER_IPS = (1..NUM_APP_SERVERS).map { |i| "#{SUBNET_PREFIX}.#{100+i}" }
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
-  config.ssh.insert_key = false
+  # config.ssh.insert_key = false
 
   ###################################################
   # Application servers
