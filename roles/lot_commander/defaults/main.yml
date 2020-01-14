@@ -2,3 +2,4 @@
 application_repository_version: master
 aws_credentials_dir: /home/{{ ansible_user }}/.aws
 skip_auth: no
+shopify_store: wholesale_ninjas
