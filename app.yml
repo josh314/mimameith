@@ -4,7 +4,6 @@
     - secrets.yml
   vars:
     app_version: master
-    app_config: ~/dev/apps/lot-commander/config-prod.js
     app_port: 9000
     path: "{{ ansible_env.HOME }}/lot-commander"
     skip_application_auth: false
@@ -56,6 +55,7 @@
       become: yes
       vars:
         server_name: lots.wholesaleninjas.com
+        tls_enabled: false
         upstream_servers:
           - localhost:{{ app_port }}
 
