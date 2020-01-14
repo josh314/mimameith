@@ -14,6 +14,7 @@
 - [ ] ec2 provisioning
   - [ ] AMI
   - [ ] instance type
+    - [ ] import from var file
   - [ ] security groups
   - [ ] DNS
   - [*] elastic IP for load balancer
@@ -23,8 +24,20 @@
     
 
 - [ ] SSL/TLS
-  - [ ] certbot
-  - [ ] self-signed for development pruposes
+  - [ ] load balancer
+    - [*] openssl key pair
+    - [ ] certificate
+      - [ ] certbot
+      - [*] self-signed
+      - [ ] switch between certbot and self-signed based on environment
+  - [ ] app servers (may be unnecessary if we trust AWS intranet sufficiently)
+    - [ ] openssl key pair
+    - [ ] self-signed cert
+    - [ ] change `tls_enabled` to `true` in `app.yml`
+    - [ ] modify load balancer nginx config to proxy with HTTPS to the app server (port 443)
+
+- [ ] nginx
+  - [ ] variable and settings for whether to proxy to HTTPS in roundrobin server group
 
 - [ ] tighten file permissions
   - [ ] .aws folder
@@ -36,13 +49,3 @@
   - [ ] pm2 lot-commander
 
 - [ ] restart machine (required by updates)
-
-- [ ] load balancer
-  - [*] nginx, obvs
-    - [*] config task
-  - [ ] proxy to 443 on app servers
-  - [ ] certbot
-
-- [ ] app servers
-  - [ ] self-signed certs
-  - [ ] setup nginx for certs
