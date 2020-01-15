@@ -104,7 +104,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         ansible.inventory_path = "hosts/vagrant.yml"
         ansible.playbook = "load-balancer.yml"
         ansible.extra_vars = {
-          server_nodes: APP_SERVER_IPS.map { |ip| "#{ip}:80"}
+          server_nodes: APP_SERVER_IPS.map { |ip| "#{ip}:80"},
+          server_hostname: "vagrant--lots.wholesaleninjas.com"
         }
 
         ######################
