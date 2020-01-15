@@ -8,11 +8,31 @@
 #
 ############################################################
 
-# Environment
-stack_env: staging
+#################################
+# Environment & stack settings
 
-# The AWS Elastic IP for the load balancer
+# environment name
+stack_env: dev
+
+
+# AWS instance settings for the load balancer
+load_balancer_ami: ami-0d03e44a2333dea65
+load_balancer_instance_type: t2.nano
+load_balancer_region: us-east-1
+load_balancer_key_name: josh-key-pair-useast
+
 load_balancer_eip: 34.235.84.237
 
-# 
+# AWS instance settings for the application servers
+app_server_ami: ami-0d03e44a2333dea65
+app_server_instance_type: t2.nano
+app_server_region: us-east-1
+app_server_key_name: josh-key-pair-useast
 num_app_servers: 1
+
+
+
+##################################
+# Application settings
+
+app_version: master
