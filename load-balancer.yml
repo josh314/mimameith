@@ -1,12 +1,13 @@
 - name: configure provisioned servers
   hosts: load_balancer
   become: yes
+  vars_files:
+    - secrets.yml
   vars:
-    ssl_key_dir: /etc/ssl/private
-    ssl_key_file: "{{ ssl_key_dir }}/{{ server_hostname }}.key"
-    ssl_cert_dir: /etc/ssl/certs
-    ssl_cert_file: "{{ ssl_cert_dir }}/{{ server_hostname }}.crt"
-    ssl_csr_file: "{{ ssl_cert_dir }}/{{ server_hostname }}.csr"
+    ssl_cert_dir: /etc/ssl/{{ server_name }}
+    ssl_key_file: "{{ server_hostname }}.key"
+    ssl_cert_file: "{{ server_hostname }}.crt"
+    ssl_csr_file: "{{ server_hostname }}.csr"
 
   tasks:
 
@@ -22,33 +23,34 @@
       vars:
         server_name: "{{ server_hostname }}"
         upstream_servers: "{{ server_nodes }}"
-        key_file: "{{ ssl_key_file }}"
-        cert_file: "{{ ssl_cert_file }}"
+        key_file: "{{ ssl_cert_dir }}/{{ ssl_key_file }}"
+        cert_file: "{{ ssl_cert_dir }}/{{ ssl_cert_file }}"
         tls_enabled: true
 
-    - name: Ensure directory exists for local self-signed TLS certs.
-      file:
-        path:
-          - "{{ ssl_key_dir }}"
-          - "{{ ssl_cert_dir }}"
-        state: directory
+    # Generate self-signed OpenSSL keys and cert
+    - import_role:
+        name: self_signed_ssl
+      vars:
+        - self_signed_ssl_cert_dir: "{{ ssl_cert_dir }}"
+        - self_signed_ssl_key_file: "{{ ssl_key_file }}"
+        - self_signed_ssl_cert_file: "{{ ssl_cert_file }}"
+        - self_signed_ssl_csr_file: "{{ ssl_csr_file }}"
+        - self_signed_ssl_common_name: "{{ server_name }}"
+      when: load_balancer_self_signed_ssl is defined and load_balancer_self_signed_ssl
 
-    - name: Generate an OpenSSL private key.
-      openssl_privatekey:
-        path: "{{ ssl_key_file }}"
-
-    - name: Generate an OpenSSL CSR.
-      openssl_csr:
-        path: "{{ ssl_csr_file }}"
-        privatekey_path: "{{ ssl_key_file }}"
-        common_name: "{{ server_hostname }}"
-
-    - name: Generate a Self Signed OpenSSL certificate.
-      openssl_certificate:
-        path: "{{ ssl_cert_file }}"
-        privatekey_path: "{{ ssl_key_file }}"
-        csr_path: "{{ ssl_csr_file }}"
-        provider: selfsigned
+    # Generate OpenSSL keys and certification with Let's Encrypt
+    - import_role:
+        name: mprahl.lets-encrypt-route-53
+      vars:
+        - ler53_cert_common_name: "{{ server_name }}"
+        - ler53_route_53_domain: wholesaleninjas.com
+        - ler53_aws_access_key: "{{ aws.credentials.admin.aws_access_key_id }}"
+        - ler53_aws_secret_key: "{{ aws.credentials.admin.aws_secret_access_key }}"
+        - ler53_cert_dir: "{{ ssl_cert_dir }}"
+        - ler53_key_file_name: "{{ ssl_key_file }}"
+        - ler53_cert_file_name: "{{ ssl_cert_file }}"
+        - ler53_csr_file_name: "{{ ssl_csr_file }}"
+      when: load_balancer_self_signed_ssl is undefined or not load_balancer_self_signed_ssl
 
     - name: restart nginx
       service: name=nginx state=restarted
