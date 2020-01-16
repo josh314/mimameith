@@ -1,0 +1,24 @@
+
+- name: "Ensure the {{ self_signed_ssl_cert_dir }} directory exists with correct permissions"
+  file:
+    path: "{{ self_signed_ssl_cert_dir }}"
+    state: directory
+    owner: root
+    mode: 0755
+
+- name: Generate an OpenSSL private key.
+  openssl_privatekey:
+    path: "{{ self_signed_ssl_cert_dir }}/{{ self_signed_ssl_key_file }}"
+
+- name: Generate an OpenSSL CSR.
+  openssl_csr:
+    path: "{{ self_signed_ssl_cert_dir }}/{{ self_signed_ssl_csr_file }}"
+    privatekey_path: "{{ self_signed_ssl_cert_dir }}/{{ self_signed_ssl_key_file }}"
+    common_name: "{{ self_signed_ssl_common_name }}"
+
+- name: Generate a Self Signed OpenSSL certificate.
+  openssl_certificate:
+    path: "{{ self_signed_ssl_cert_dir }}/{{ self_signed_ssl_cert_file }}"
+    privatekey_path: "{{ self_signed_ssl_cert_dir }}/{{ self_signed_ssl_key_file }}"
+    csr_path: "{{ self_signed_ssl_cert_dir }}/{{ self_signed_ssl_csr_file }}"
+    provider: selfsigned
