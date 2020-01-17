@@ -12,16 +12,16 @@
     app_server_count_tags:
       tier: app_server
       stack: lot-commander
+      org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
       version: "{{ app_version }}"
     load_balancer_count_tags:
       tier: load_balancer
       stack: lot-commander
+      org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
 
   tasks:
-
-    # TODO: create/check security groups for environment
 
     - name: Launch the load balancer instance in EC2
       ec2:
