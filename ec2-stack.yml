@@ -71,7 +71,7 @@
         region: "{{ ec2_load_balancer.tagged_instances[0].region }}"
       register: ec2_load_balancer_eip_result
 
-    - debug: var=ec2_load_balancer_eip_result
+    # - debug: var=ec2_load_balancer_eip_result
 
     - name: add app server host(s) to inventory
       add_host:
@@ -116,3 +116,14 @@
 
 - name: Application playbook
   import_playbook: app.yml
+
+
+- name: Cleanup tasks on all provisioned servers
+  hosts: load_balancer:app_servers
+
+  tasks:
+
+    - name: Rebooting
+      reboot:
+        reboot_timeout: 3600
+      become: yes
