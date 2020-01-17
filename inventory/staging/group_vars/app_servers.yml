@@ -1,0 +1,11 @@
+---
+
+####################################################
+# App servers
+# ===========
+#
+# These variables are for the app_servers
+#
+############################################################
+
+shopify_store: wholesale_ninjas

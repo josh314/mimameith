@@ -12,8 +12,8 @@
 # Environment & stack settings
 
 # environment name
-stack_env: dev
-
+stack_env: staging
+org: wholesale-ninjas
 
 # AWS instance settings for the load balancer
 load_balancer_ami: ami-0d03e44a2333dea65
