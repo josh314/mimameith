@@ -1,0 +1,11 @@
+mongodb_system_user: mongodb
+mongodb_system_group: mongodb
+
+mongodb_config_file: /etc/mongod.conf
+
+mongodb_db_dir_path: /var/lib/mongodb # -or- /data/db
+mongodb_log_dir_path: /var/log/mongodb
+mongodb_log_path: "{{ mongodb_log_dir_path }}/mongod.log"
+
+mongodb_port: 27017
+mongodb_bind_ip: 127.0.0.1

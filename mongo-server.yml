@@ -1,0 +1,24 @@
+- name: Deploy mongodb server
+  hosts: mongo_servers
+  become: yes
+  vars_files:
+    - secrets.yml
+  # vars:
+  #   - 
+  #   - 
+
+  tasks:
+
+    - name: update apt packages
+      apt:
+        update-cache: yes
+        upgrade: dist
+
+    # Install and configure mongodb
+    - import_role:
+        name: mongo_setup
+      vars:
+        mongodb_admin_user: "{{ db.auth.admin.user }}"
+        mongodb_admin_password: "{{ db.auth.admin.password }}"
+        mongodb_app_user: "{{ db.auth.app.user }}"
+        mongodb_app_password: "{{ db.auth.app.password }}"

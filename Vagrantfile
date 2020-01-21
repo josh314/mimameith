@@ -6,10 +6,18 @@ VAGRANTFILE_API_VERSION = "2"
 #
 #########################################################
 
+ANSIBLE_INVENTORY_FILE = 'inventory/vagrant/hosts'
+
 if ENV['PROVISION_LOAD_BALANCER'] 
   PROVISION_LOAD_BALANCER = JSON.parse(ENV['PROVISION_LOAD_BALANCER'])
 else 
   PROVISION_LOAD_BALANCER = true
+end
+
+if ENV['PROVISION_MONGO_SERVER'] 
+  PROVISION_MONGO_SERVER = JSON.parse(ENV['PROVISION_MONGO_SERVER'])
+else 
+  PROVISION_MONGO_SERVER = true
 end
 
 if ENV['REQUIRE_APPLICATION_AUTH'] 
@@ -22,6 +30,7 @@ NUM_APP_SERVERS = ENV['NUM_APP_SERVERS'] ? ENV['NUM_APP_SERVERS'].to_i : 2
 APPLICATION_VERSION = ENV['APP_VERSION'] || "master"
 SUBNET_PREFIX = ENV['SUBNET_PREFIX']  || '192.168.33'
 SHOPIFY_STORE = ENV['SHOPIFY_STORE'] || 'ninjas_and_such'
+
 
 
 APP_SERVER_IPS = (1..NUM_APP_SERVERS).map { |i| "#{SUBNET_PREFIX}.#{100+i}" }
@@ -52,7 +61,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       server.vm.provision "ansible" do |ansible|
         ansible.compatibility_mode = "2.0"
 
-        ansible.inventory_path = "hosts/vagrant.yml"
+        ansible.inventory_path = ANSIBLE_INVENTORY_FILE
         ansible.playbook = "app.yml"
         ansible.extra_vars = {
           skip_application_auth: REQUIRE_APPLICATION_AUTH.equal?(false),
@@ -101,7 +110,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       load_balancer.vm.provision "ansible" do |ansible|
         ansible.compatibility_mode = "2.0"
 
-        ansible.inventory_path = "hosts/vagrant.yml"
+        ansible.inventory_path = ANSIBLE_INVENTORY_FILE
         ansible.playbook = "load-balancer.yml"
         ansible.extra_vars = {
           server_nodes: APP_SERVER_IPS.map { |ip| "#{ip}:80"},
@@ -121,6 +130,51 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
 
       end # load_balancer.vm.provision
+
+    end # config.vm.define
+
+  end # if
+
+
+  ###################################################
+  # Load balancer
+  # =============
+  #
+  ###################################################
+  if PROVISION_MONGO_SERVER
+
+    config.vm.define "mongo_server" do |mongo_server|
+
+      # box
+      mongo_server.vm.box = "ubuntu/bionic64"
+
+      # make visible on the network
+      mongo_server.vm.network "private_network", ip: "#{SUBNET_PREFIX}.20"
+
+      # SSH configuration
+      mongo_server.ssh.forward_agent = true
+
+      # Provisioning
+      mongo_server.vm.provision "ansible" do |ansible|
+        ansible.compatibility_mode = "2.0"
+
+        ansible.inventory_path = ANSIBLE_INVENTORY_FILE
+        ansible.playbook = "mongo-server.yml"
+        ansible.extra_vars = {
+        }
+
+        ######################
+        # Vault decryption
+        # ================
+        #
+        # Use one or the other of the following options to provide the password
+        #
+
+        # ansible.ask_vault_pass = true
+        ansible.vault_password_file = "password"
+
+
+      end # mongo_server.vm.provision
 
     end # config.vm.define
 
