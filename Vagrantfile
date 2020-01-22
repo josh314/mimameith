@@ -8,6 +8,12 @@ VAGRANTFILE_API_VERSION = "2"
 
 ANSIBLE_INVENTORY_FILE = 'inventory/vagrant/hosts'
 
+if ENV['PROVISION_CTRL_SERVER']
+  PROVISION_CTRL_SERVER = JSON.parse(ENV['PROVISION_CTRL_SERVER'])
+else
+  PROVISION_CTRL_SERVER = true
+end
+
 if ENV['PROVISION_LOAD_BALANCER'] 
   PROVISION_LOAD_BALANCER = JSON.parse(ENV['PROVISION_LOAD_BALANCER'])
 else 
@@ -28,16 +34,45 @@ end
 
 NUM_APP_SERVERS = ENV['NUM_APP_SERVERS'] ? ENV['NUM_APP_SERVERS'].to_i : 2
 APPLICATION_VERSION = ENV['APP_VERSION'] || "master"
-SUBNET_PREFIX = ENV['SUBNET_PREFIX']  || '192.168.33'
+
+APP_STACK_SUBNET_PREFIX = ENV['APP_STACK_SUBNET_PREFIX']  || '192.168.33'
+CTRL_SUBNET_PREFIX = ENV['CTRL_SUBNET_PREFIX']  || '192.168.32'
+
 SHOPIFY_STORE = ENV['SHOPIFY_STORE'] || 'ninjas_and_such'
 
+CTRL_SERVER_IP = "#{CTRL_SUBNET_PREFIX}.#{10}"
+LOAD_BALANCER_IP = "#{APP_STACK_SUBNET_PREFIX}.#{10}"
+MONGO_SERVER_IP = "#{APP_STACK_SUBNET_PREFIX}.#{20}"
+APP_SERVER_IPS = (1..NUM_APP_SERVERS).map { |i| "#{APP_STACK_SUBNET_PREFIX}.#{100+i}" }
 
-
-APP_SERVER_IPS = (1..NUM_APP_SERVERS).map { |i| "#{SUBNET_PREFIX}.#{100+i}" }
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   # config.ssh.insert_key = false
+
+  ###################################################
+  # Control Server
+  # ==============
+  #
+  ###################################################
+  if PROVISION CTRL_SERVER
+
+    config.vm.define "ctrl" do |ctrl|
+
+      # box
+      ctrl.vm.box = "ubuntu/bionic64"
+
+      # make visible on the network
+      ctrl.vm.network "private_network", ip: CTRL_SERVER_IP
+
+      # SSH configuration
+      ctrl.ssh.forward_agent = true
+
+      # end # mongo_server.vm.provision
+
+    end # config.vm.define
+
+  end # if
 
   ###################################################
   # Application servers
@@ -101,7 +136,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       load_balancer.vm.box = "ubuntu/bionic64"
 
       # make visible on the network
-      load_balancer.vm.network "private_network", ip: "#{SUBNET_PREFIX}.10"
+      load_balancer.vm.network "private_network", ip: LOAD_BALANCER_IP
 
       # SSH configuration
       load_balancer.ssh.forward_agent = true
@@ -137,7 +172,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
 
   ###################################################
-  # Load balancer
+  # Database
   # =============
   #
   ###################################################
@@ -149,7 +184,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       mongo_server.vm.box = "ubuntu/bionic64"
 
       # make visible on the network
-      mongo_server.vm.network "private_network", ip: "#{SUBNET_PREFIX}.20"
+      mongo_server.vm.network "private_network", ip: MONGO_SERVER_IP
 
       # SSH configuration
       mongo_server.ssh.forward_agent = true
@@ -161,6 +196,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         ansible.inventory_path = ANSIBLE_INVENTORY_FILE
         ansible.playbook = "mongo-server.yml"
         ansible.extra_vars = {
+          mongodb_bind_ip: "localhost,#{MONGO_SERVER_IP}"
         }
 
         ######################
