@@ -1,0 +1,20 @@
+- name: Backup mongodb server
+  hosts: mongo_control_servers
+  vars:
+    mongo_s3_backup_db_user: "{{ db.auth.backup.user }}"
+    mongo_s3_backup_db_password: "{{ db.auth.backup.password }}"
+    mongo_s3_backup_working_dir: /home/{{ ansible_user }}/tmp
+    mongo_s3_backup_dir: "{{ mongo_s3_backup_working_dir }}/mongo_s3_backup_dump"
+    mongo_s3_backup_tarball_file: mongodump.{{ ansible_date_time.date }}.tar.gz
+    mongo_s3_backup_s3_bucket: expresshop-mongodump
+    mongo_s3_backup_aws_access_key: "{{ aws.credentials.admin.aws_access_key_id }}"
+    mongo_s3_backup_aws_secret_key: "{{ aws.credentials.admin.aws_secret_access_key }}"
+    
+  tasks:
+
+    - import_role:
+        name: mongo_tools
+      become: yes
+
+    - import_role:
+        name: mongo_s3_backup
