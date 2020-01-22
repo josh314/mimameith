@@ -42,7 +42,7 @@ SHOPIFY_STORE = ENV['SHOPIFY_STORE'] || 'ninjas_and_such'
 
 CTRL_SERVER_IP = "#{CTRL_SUBNET_PREFIX}.#{10}"
 LOAD_BALANCER_IP = "#{APP_STACK_SUBNET_PREFIX}.#{10}"
-MONGO_SERVER_IP = "#{APP_STACK_SUBNET_PREFIX}.#{20}"
+MONGO_SERVER_IP = "#{APP_STACK_SUBNET_PREFIX}.#{2}"
 APP_SERVER_IPS = (1..NUM_APP_SERVERS).map { |i| "#{APP_STACK_SUBNET_PREFIX}.#{100+i}" }
 
 
@@ -55,7 +55,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # ==============
   #
   ###################################################
-  if PROVISION CTRL_SERVER
+  if PROVISION_CTRL_SERVER
 
     config.vm.define "ctrl" do |ctrl|
 
