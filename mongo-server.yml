@@ -22,3 +22,7 @@
         mongodb_admin_password: "{{ db.auth.admin.password }}"
         mongodb_app_user: "{{ db.auth.app.user }}"
         mongodb_app_password: "{{ db.auth.app.password }}"
+        mongodb_backup_user: "{{ db.auth.backup.user }}"
+        mongodb_backup_password: "{{ db.auth.backup.password }}"
+        mongodb_restore_user: "{{ db.auth.restore.user }}"
+        mongodb_restore_password: "{{ db.auth.restore.password }}"

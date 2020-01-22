@@ -1,22 +1,11 @@
-- name: Import the public key used by the package management system
-  apt_key:
-    # keyserver: hkp://keyserver.ubuntu.com:80
-    # id: 7F0CEB10
-    url: https://www.mongodb.org/static/pgp/server-4.2.asc
-    state: present
-
-- name: Add MongoDB repository
-  apt_repository:
-    repo: deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.2 multiverse
-    state: present
+- import_role:
+    name: add_mongo_repo
 
 - name: install mongodb
   apt:
     pkg: mongodb-org 
     state: latest 
     update_cache: yes
-  # notify:
-  # - start mongodb
 
 - name: install config file
   template:
@@ -27,9 +16,15 @@
 
 - name: ensure database directory and permissions
   file:
-    name:
-      - "{{ mongodb_db_dir_path }}"
-      - "{{ mongodb_log_dir_path }}"
+    name: "{{ mongodb_db_dir_path }}"
+    state: directory
+    mode: 0755
+    owner: "{{ mongodb_system_user }}"
+    group: "{{ mongodb_system_group }}"
+
+- name: ensure log directory and permissions
+  file:
+    name: "{{ mongodb_log_dir_path }}"
     state: directory
     mode: 0755
     owner: "{{ mongodb_system_user }}"
@@ -51,24 +46,69 @@
       - pymongo
     # virtualenv options?
 
-- name: Ensure replicaset rs0 exists
-  mongodb_replicaset: # see https://docs.ansible.com/ansible/latest/modules/mongodb_replicaset_module.html
+# There is a bit of a chicken-and-the-egg issue with creating the admin user. MongoDB allows you to create one user
+# upon startup from the local machine without authentication (the so-called "localhost exception"). But this fails if
+# attempted again, meaning the present task will have an error if this playbook is run more than once against the same host.
+# The `ignore_errors` option prevents the error from ceasing playbook operation in that case.
+- name: Setup mongo admin user
+  mongodb_user:
+    database: admin
+    name: "{{ mongodb_admin_user }}"
+    password: "{{ mongodb_admin_password }}"
+    roles: userAdminAnyDatabase,dbAdminAnyDatabase,readWriteAnyDatabase
+    state: present
+  ignore_errors: yes # This is required for idempotence
+
+# The user created in the task above will now be used for further mongo tasks requiring authentication 
+
+- name: Setup mongo backup user
+  mongodb_user:
+    database: admin
     login_host: localhost
-    login_port: "{{ mongodb_port }}"
+    login_port: "{{ mongodb_port | string }}"
     login_user: "{{ mongodb_admin_user }}"
     login_password: "{{ mongodb_admin_password }}"
     login_database: admin
-    replica_set: rs0
-    members: localhost:{{ mongodb_port }}
-    validate: no
+    name: "{{ mongodb_backup_user }}"
+    password: "{{ mongodb_backup_password }}"
+    roles: backup
 
-- name: Setup mongo users # is this redundant with `mongodb_replicaset`?
-  mongodb_user: # see https://docs.ansible.com/ansible/latest/modules/mongodb_user_module.html
+- name: Setup mongo restore user
+  mongodb_user:
+    database: admin
     login_host: localhost
-    login_port: "{{ mongodb_port }}"
-    login_user: "{{ mongodb_app_user }}"
-    login_password: "{{ mongodb_app_password }}"
+    login_port: "{{ mongodb_port | string }}"
+    login_user: "{{ mongodb_admin_user }}"
+    login_password: "{{ mongodb_admin_password }}"
     login_database: admin
+    name: "{{ mongodb_restore_user }}"
+    password: "{{ mongodb_restore_password }}"
+    roles: restore
+
+- name: Setup mongo app user
+  mongodb_user:
+    database: ehdb
+    login_host: localhost
+    login_port: "{{ mongodb_port | string }}"
+    login_user: "{{ mongodb_admin_user }}"
+    login_password: "{{ mongodb_admin_password }}"
+    login_database: admin
+    name: "{{ mongodb_app_user }}"
+    password: "{{ mongodb_app_password }}"
+    roles: readWrite
+
+
+# - name: Ensure replicaset rs0 exists
+#   mongodb_replicaset: # see https://docs.ansible.com/ansible/latest/modules/mongodb_replicaset_module.html
+#     login_host: localhost
+#     login_port: "{{ mongodb_port }}"
+#     login_user: "{{ mongodb_admin_user }}"
+#     login_password: "{{ mongodb_admin_password }}"
+#     login_database: admin
+#     replica_set: rs0
+#     members: localhost:{{ mongodb_port }}
+#     validate: no
+
 
 # - name: configure mongo administrative params
 #   mongodb_parameter: ## see https://docs.ansible.com/ansible/latest/modules/mongodb_parameter_module.html
