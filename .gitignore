@@ -3,3 +3,7 @@
 *.log
 
 sample/
+
+# secret shit
+password
+unsafe*

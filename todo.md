@@ -25,7 +25,14 @@
   - [*] version tag on app server instances
   - [ ] instance names
     - [ ] number them: 'app_server_1', etc
-    
+  - [ ] database
+    - [ ] elastic IP?
+    - [ ] security group
+    - [ ] replica provisioning
+  - [ ] removable block storage
+    - [ ] attach/detach to instances
+    - [ ] XFS file system to support mongodb's WiredTiger storage engine
+  
 
 - [ ] SSL/TLS
   - [ ] load balancer
@@ -56,19 +63,37 @@
   - [ ] production
     - [ ] group_vars
   - [ ] hanes?
+  - [ ] add db_servers to inventory
 
 - [ ] mongodb
-  - [ ] backup playbook
-    - [ ] S3 bucket?
-    - [ ] purge old backups
-  - [ ] deploy playbook
+  - [ ] XFS file system preferred for mongodb
+  - [ ] backup playbook/role
+    - [ ] mongodump
+    - [ ] tar dump
+    - [ ] save to S3
+    - [ ] (optional) purge old backups
+    - [ ] cron (either create a cron on a host machine or run playbook as a cron on the control machine)
+  - [ ] install-mongo role
+    - [*] ensure DB directory
     - [ ] linux user associated with mongo
-    - [ ] mongodb user(s)
-      - [ ] admin
-      - [ ] lot commander 
-    - [ ] backfill read from backup
-
+    - [ ] mongod.conf template
+      - [*] bind_ip for remote connections
+      - [*] enable authentication
+    - [*] mongodb user(s)
+      - [*] admin
+      - [*] lot commander
+    - [*] start daemon as service
+    - [ ] sharding and replication?
+    - [ ] encryption
+  - [ ] application-specifc setup (role, playbook or just a set of tasks?)
+      - [ ] create db & collections
+      - [ ] create indices
+      - [ ] backfill read from backup
 - [ ] distinct secrets.yml files for each environment/cluster
 
-# Bugs
-- [*] load balancer not forwarding HTTP requests to HTTPS
+- [ ] python virtual environment role
+  - [ ] ensurepip not installed with bionic's python3 (suggested to `apt-get install python3-venv`)
+
+
+# Bugs/Warnings
+- [ ] creating the admin user on mongo instances fails on the second time through since the first time uses local exception

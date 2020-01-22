@@ -82,3 +82,19 @@ head -c20 /dev/urandom | base64
 ```
 
 This should be done semi-regularly. Note that old sessions will not be valid on servers instantiated with the new secret.
+
+# Playbooks
+
+## `mongo-backup.yml`
+
+Runs `mongo_tools` and `mongo_s3_backup` roles. Usage example:
+
+```
+ansible-playbook mongo-backup.yml \
+    -i inventory/vagrant/hosts \
+    --vault-password-file password \
+    -e @secrets.yml \
+    -e mongo_s3_backup_db_host=ec2-35-174-137-1.compute-1.amazonaws.com
+```
+
+In the example above, we are running ansible on a vagrant-provisioned control server while the db to be copied lives at `ec2-35-174-137-1.compute-1.amazonaws.com`. Without the `mongo_s3_backup_host` var, the playbook will try to copy from mongodb installation on the server the playbook is being run against.
