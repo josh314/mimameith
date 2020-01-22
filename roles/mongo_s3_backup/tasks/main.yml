@@ -1,0 +1,45 @@
+- name: Ensure working directory exists
+  file:
+    path: "{{ mongo_s3_backup_working_dir }}"
+    state: directory
+
+- name: Take a mongo dump
+  command: >
+    mongodump
+    --host={{ mongo_s3_backup_db_host }}
+    --port={{ mongo_s3_backup_db_port }}
+    --username={{ mongo_s3_backup_db_user }}
+    --password={{ mongo_s3_backup_db_password }}
+    --out={{ mongo_s3_backup_dir }}
+    --gzip
+
+- name: create tarball from dump
+  archive:
+    path: "{{ mongo_s3_backup_dir }}/*"
+    dest: "{{ mongo_s3_backup_working_dir }}/{{ mongo_s3_backup_tarball_file }}"
+    format: gz
+    remove: yes
+    force_archive: yes
+
+- name: ensure s3 bucket exists
+  s3_bucket:
+    aws_access_key: "{{ mongo_s3_backup_aws_access_key }}"
+    aws_secret_key: "{{ mongo_s3_backup_aws_secret_key }}"
+    name: "{{ mongo_s3_backup_s3_bucket }}"
+    state: present
+    # policy: 
+
+- name: save dump tarball to AWS S3
+  aws_s3:
+    aws_access_key: "{{ mongo_s3_backup_aws_access_key }}"
+    aws_secret_key: "{{ mongo_s3_backup_aws_secret_key }}"
+    bucket: "{{ mongo_s3_backup_s3_bucket }}"
+    mode: put
+    object: "{{ mongo_s3_backup_tarball_file }}"
+    src: "{{ mongo_s3_backup_working_dir }}/{{ mongo_s3_backup_tarball_file }}"
+    permission: bucket-owner-full-control
+
+- name: remove dump directory
+  file:
+    path: "{{ mongo_s3_backup_working_dir }}"
+    state: absent

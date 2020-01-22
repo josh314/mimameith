@@ -1,0 +1,25 @@
+---
+
+####################################################################
+# REQUIRED
+# ========
+#
+####################################################################
+
+mongo_s3_backup_db_user:
+mongo_s3_backup_db_password:
+mongo_s3_backup_aws_access_key:
+mongo_s3_backup_aws_secret_key:
+
+####################################################################
+# Defaults
+# ========
+#
+####################################################################
+
+mongo_s3_backup_working_dir: /home/{{ ansible_user }}/tmp
+mongo_s3_backup_dir: "{{ mongo_s3_backup_working_dir }}/mongo_s3_backup_dump"
+mongo_s3_backup_tarball_file: mongodump.{{ ansible_date_time.date }}.tar.gz
+mongo_s3_backup_s3_bucket: expresshop-mongodump
+mongo_s3_backup_db_host: localhost
+mongo_s3_backup_db_port: 27017
