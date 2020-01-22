@@ -123,6 +123,12 @@
 
   tasks:
 
+    - name: Clean up apt packages
+      apt:
+        autoclean: yes
+        autoremove: yes
+      become: yes
+
     - name: Rebooting
       reboot:
         reboot_timeout: 3600
