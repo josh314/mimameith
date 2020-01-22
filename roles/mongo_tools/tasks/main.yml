@@ -1,0 +1,23 @@
+
+- name: update apt packages
+  apt:
+    upgrade: dist
+    update_cache: yes
+
+- import_role:
+    name: add_mongo_repo
+
+- name: install mongodb tools
+  apt:
+    pkg: mongodb-org-tools
+    state: latest 
+    update_cache: yes
+
+- name: Install pip
+  apt:
+    name: python3-pip
+
+- name: Install python packages
+  pip:
+    name:
+      - boto3
