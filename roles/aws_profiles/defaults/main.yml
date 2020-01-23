@@ -1,0 +1,2 @@
+
+aws_profiles__dir: /home/{{ ansible_user }}/.aws
