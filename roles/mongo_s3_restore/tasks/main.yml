@@ -35,7 +35,7 @@
         aws_profiles__profiles:
           - aws_access_key_id: "{{ mongo_s3_restore_aws_access_key }}"
             aws_secret_access_key: "{{ mongo_s3_restore_aws_secret_key }}"
-            region: "{{ mongo_s3_restore_aws_region }}"
+            region: "{{ mongo_s3_restore_aws_region | default(None) }}"
 
     - name: copy shell script for getting most recent backup from S3
       copy:
@@ -47,6 +47,7 @@
       shell:
         cmd: ./get-most-recent-backup-from-bucket.py {{ mongo_s3_restore_s3_bucket }}
         chdir: "{{ mongo_s3_restore_working_dir }}"
+      become_user: "{{ mongo_s3_restore_boto_script_user }}"
       register: script_result
 
     - set_fact:
@@ -64,7 +65,7 @@
       meta: end_play
   when: mongo_s3_restore_s3_object is not defined
 
-- name: Retrieve specific object from S3
+- name: Retrieve S3 object
   aws_s3:
     aws_access_key: "{{ mongo_s3_restore_aws_access_key }}"
     aws_secret_key: "{{ mongo_s3_restore_aws_secret_key }}"

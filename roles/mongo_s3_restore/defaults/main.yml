@@ -28,6 +28,6 @@
 ####################################################################
 
 mongo_s3_restore_working_dir: /home/{{ ansible_user }}/tmp
-mongo_s3_restore_s3_bucket: expresshop-mongodump
 mongo_s3_restore_db_host: localhost
 mongo_s3_restore_db_port: 27017
+mongo_s3_restore_boto_script_user: "{{ ansible_user }}"
