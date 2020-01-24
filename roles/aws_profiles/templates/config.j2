@@ -1,5 +1,5 @@
 {% for profile in aws_profiles__profiles %}
 [{{ profile.name | default('default') }}]
-region = {{ profile.region | default('us-east-2') }}
+region = {{ profile.region | default('us-east-2', boolean=True) }}
 output = json
 {% endfor %}

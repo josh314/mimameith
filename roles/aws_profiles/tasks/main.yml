@@ -10,9 +10,13 @@
     src: credentials.j2
     dest: "{{ aws_profiles__dir}}/credentials"
     mode: 0644
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
 
 - name: Render and copy AWS config file
   template:
     src: config.j2
     dest: "{{ aws_profiles__dir}}/config"
     mode: 0644
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
