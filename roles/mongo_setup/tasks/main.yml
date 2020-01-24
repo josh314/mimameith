@@ -123,5 +123,11 @@
 #     mode: 
 #     owner:
 
+- import_role:
+    name: mongo_s3_restore
+  vars:
+    mongo_s3_restore_db_user: "{{ mongodb_restore_user }}"
+    mongo_s3_restore_db_password: "{{ mongodb_restore_password }}"
+  when: mongo_s3_restore_s3_bucket is defined
 
 
