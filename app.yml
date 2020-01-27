@@ -12,9 +12,6 @@
 
   tasks:
 
-    # TODO: provision ec2 instance
-      # set security groups
-
     - name: Upgrade packages
       become: yes
       apt: 
@@ -22,14 +19,9 @@
         update_cache: yes
         cache_valid_time: 3600
 
-    - name: install emacs
-      become: yes
-      apt: name=emacs
-
-    # # install git
-    # - import_role:
-    #     name: geerlingguy.git
+    # - name: install emacs
     #   become: yes
+    #   apt: name=emacs
 
     # install npm/node and global node packages
     - import_role:
@@ -43,11 +35,6 @@
       become: yes
       npm: name=pm2 global=yes production=yes
 
-    # TODO: config TLS/SSL
-    # certbot or self-sign?
-
-    # TODO: firewall and opening of ports
-      # ufw
 
     # Install nginx and configure as a reverse proxy for the application
     - import_role:
@@ -69,13 +56,8 @@
         local_deploy_key_file: ~/.ssh/aws_deploy_key_ed25519
         remote_deploy_key_file: /home/{{ ansible_user }}/.ssh/id_ed25519
         skip_auth: "{{ skip_application_auth }}"
-        db_host: '{{ db.host.public_dns }}'
-        db_port: '{{ db.host.port }}'
         db_app_user: "{{ db.auth.app.user }}"
         db_app_password: "{{ db.auth.app.password }}"
-
-
-    # TODO? mkdir any necessary directories for logs, images or other files
 
     - name: restart nginx
       become: yes
