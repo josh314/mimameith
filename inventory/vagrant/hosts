@@ -49,4 +49,3 @@ mongo_servers:
 mongo_control_servers:
   hosts:
     ctrl
-    foobar_jones

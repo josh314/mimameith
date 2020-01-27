@@ -32,7 +32,7 @@ else
   REQUIRE_APPLICATION_AUTH = false
 end 
 
-NUM_APP_SERVERS = ENV['NUM_APP_SERVERS'] ? ENV['NUM_APP_SERVERS'].to_i : 2
+NUM_APP_SERVERS = ENV['NUM_APP_SERVERS'] ? ENV['NUM_APP_SERVERS'].to_i : 1
 APPLICATION_VERSION = ENV['APP_VERSION'] || "master"
 
 APP_STACK_SUBNET_PREFIX = ENV['APP_STACK_SUBNET_PREFIX']  || '192.168.33'
@@ -47,8 +47,6 @@ APP_SERVER_IPS = (1..NUM_APP_SERVERS).map { |i| "#{APP_STACK_SUBNET_PREFIX}.#{10
 
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-
-  # config.ssh.insert_key = false
 
   ###################################################
   # Control Server
@@ -67,61 +65,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       # SSH configuration
       ctrl.ssh.forward_agent = true
+      ctrl.ssh.insert_key = true
 
       # end # mongo_server.vm.provision
 
     end # config.vm.define
 
   end # if
-
-  ###################################################
-  # Application servers
-  # ===================
-  #
-  ###################################################
-  (1..NUM_APP_SERVERS).each do |i|
-    config.vm.define "app_server#{i}" do |server|
-
-      # box
-      server.vm.box = "ubuntu/bionic64"
-
-      # make visible on the network
-      server.vm.network "private_network", ip: APP_SERVER_IPS[i-1]
-
-      # SSH configuration
-      server.ssh.forward_agent = true
-      
-
-      # Provisioning
-      server.vm.provision "ansible" do |ansible|
-        ansible.compatibility_mode = "2.0"
-
-        ansible.inventory_path = ANSIBLE_INVENTORY_FILE
-        ansible.playbook = "app.yml"
-        ansible.extra_vars = {
-          skip_application_auth: REQUIRE_APPLICATION_AUTH.equal?(false),
-          app_version: APPLICATION_VERSION,
-          shopify_store: SHOPIFY_STORE,
-        }
-
-
-        ######################
-        # Vault decryption
-        # ================
-        #
-        # Use one or the other of the following options to provide the password
-        #
-
-        # ansible.ask_vault_pass = true
-        ansible.vault_password_file = "password"
-
-
-      end # server.vm.provision
-
-    end # config.vm.define
-
-  end # (1..NUM_APP_SERVERS).each
-
 
   ###################################################
   # Load balancer
@@ -140,6 +90,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       # SSH configuration
       load_balancer.ssh.forward_agent = true
+      load_balancer.ssh.insert_key = true
 
       # Provisioning
       load_balancer.vm.provision "ansible" do |ansible|
@@ -188,6 +139,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       # SSH configuration
       mongo_server.ssh.forward_agent = true
+      mongo_server.ssh.insert_key = true
 
       # Provisioning
       mongo_server.vm.provision "ansible" do |ansible|
@@ -196,7 +148,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         ansible.inventory_path = ANSIBLE_INVENTORY_FILE
         ansible.playbook = "mongo-server.yml"
         ansible.extra_vars = {
-          mongodb_bind_ip: "localhost,#{MONGO_SERVER_IP}"
+          mongodb_bind_ip: "localhost,#{MONGO_SERVER_IP}",
+          mongo_s3_restore_s3_bucket: "expresshop-mongodump",
+          mongo_s3_backup_s3_bucket: "expresshop-mongodump",
         }
 
         ######################
@@ -215,5 +169,56 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end # config.vm.define
 
   end # if
+
+
+  ###################################################
+  # Application servers
+  # ===================
+  #
+  ###################################################
+  (1..NUM_APP_SERVERS).each do |i|
+    config.vm.define "app_server#{i}" do |server|
+
+      # box
+      server.vm.box = "ubuntu/bionic64"
+
+      # make visible on the network
+      server.vm.network "private_network", ip: APP_SERVER_IPS[i-1]
+
+      # SSH configuration
+      server.ssh.forward_agent = true
+      server.ssh.insert_key = true
+      
+      # Provisioning
+      server.vm.provision "ansible" do |ansible|
+        ansible.compatibility_mode = "2.0"
+
+        ansible.inventory_path = ANSIBLE_INVENTORY_FILE
+        ansible.playbook = "app.yml"
+        ansible.extra_vars = {
+          skip_application_auth: REQUIRE_APPLICATION_AUTH.equal?(false),
+          app_version: APPLICATION_VERSION,
+          shopify_store: SHOPIFY_STORE,
+          db_host: MONGO_SERVER_IP,
+          db_port: '27017'
+        }
+
+
+        ######################
+        # Vault decryption
+        # ================
+        #
+        # Use one or the other of the following options to provide the password
+        #
+
+        # ansible.ask_vault_pass = true
+        ansible.vault_password_file = "password"
+
+
+      end # server.vm.provision
+
+    end # config.vm.define
+
+  end # (1..NUM_APP_SERVERS).each
 
 end
