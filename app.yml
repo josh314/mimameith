@@ -3,7 +3,7 @@
   vars_files:
     - secrets.yml
   vars:
-    app_version: master
+    application_repository_version: master
     app_port: 9000
     path: "{{ ansible_env.HOME }}/lot-commander"
     skip_application_auth: false
@@ -35,6 +35,9 @@
       become: yes
       npm: name=pm2 global=yes production=yes
 
+    - name: Setup pm2 startup script
+      command: env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u ubuntu --hp /home/ubuntu
+      become: yes
 
     # Install nginx and configure as a reverse proxy for the application
     - import_role:
@@ -50,7 +53,6 @@
         name: lot_commander
       vars:
         application_repository: git@gitlab.com:josh314/lot-commander.git
-        application_repository_version: "{{ app_version }}"
         application_port: "{{ app_port }}"
         project_path: "{{ path }}"
         local_deploy_key_file: ~/.ssh/aws_deploy_key_ed25519
@@ -59,12 +61,12 @@
         db_app_user: "{{ db.auth.app.user }}"
         db_app_password: "{{ db.auth.app.password }}"
 
+    - name: update pm2 startup process list
+      command: pm2 save
+
     - name: restart nginx
       become: yes
       service: name=nginx state=restarted
-      
-    - name: Clean up packages
-      become: yes
-      apt:
-        autoclean: yes
-        autoremove: yes
+
+    - import_role:
+        name: cleanup

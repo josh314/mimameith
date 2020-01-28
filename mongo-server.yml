@@ -3,9 +3,17 @@
   become: yes
   vars_files:
     - secrets.yml
-  # vars:
-  #   - 
-  #   - 
+  vars:
+    mongodb_admin_user: "{{ db.auth.admin.user }}"
+    mongodb_admin_password: "{{ db.auth.admin.password }}"
+    mongodb_app_user: "{{ db.auth.app.user }}"
+    mongodb_app_password: "{{ db.auth.app.password }}"
+    mongodb_backup_user: "{{ db.auth.backup.user }}"
+    mongodb_backup_password: "{{ db.auth.backup.password }}"
+    mongodb_restore_user: "{{ db.auth.restore.user }}"
+    mongodb_restore_password: "{{ db.auth.restore.password }}"
+    mongo_s3_restore_aws_access_key: "{{ aws.credentials.admin.aws_access_key_id }}"
+    mongo_s3_restore_aws_secret_key: "{{ aws.credentials.admin.aws_secret_access_key }}"
 
   tasks:
 
@@ -17,12 +25,6 @@
     # Install and configure mongodb
     - import_role:
         name: mongo_setup
-      vars:
-        mongodb_admin_user: "{{ db.auth.admin.user }}"
-        mongodb_admin_password: "{{ db.auth.admin.password }}"
-        mongodb_app_user: "{{ db.auth.app.user }}"
-        mongodb_app_password: "{{ db.auth.app.password }}"
-        mongodb_backup_user: "{{ db.auth.backup.user }}"
-        mongodb_backup_password: "{{ db.auth.backup.password }}"
-        mongodb_restore_user: "{{ db.auth.restore.user }}"
-        mongodb_restore_password: "{{ db.auth.restore.password }}"
+
+    - import_role:
+        name: cleanup

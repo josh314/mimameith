@@ -55,7 +55,5 @@
     - name: restart nginx
       service: name=nginx state=restarted
       
-    - name: Clean up packages
-      apt:
-        autoclean: yes
-        autoremove: yes
+    - import_role:
+        name: cleanup
