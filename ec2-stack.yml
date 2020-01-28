@@ -161,3 +161,36 @@
   import_playbook: app.yml
   vars:
     db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+
+###########################################################
+# Set update crons
+# ================
+# Set at staggered intervals so reboots happen in correct order
+###########################################################
+
+- name: Set update cron (database)
+  hosts: mongo_servers
+  tasks:
+    - import_role:
+        name: auto_upgrade_cron
+      vars:
+        auto_upgrade_cron_hour: '8' # 3AM in EST
+        auto_upgrade_cron_minute: '0'
+
+- name: Set update cron (app servers)
+  hosts: app_servers
+  tasks:
+    - import_role:
+        name: auto_upgrade_cron
+      vars:
+        auto_upgrade_cron_hour: '8' # 3AM in EST
+        auto_upgrade_cron_minute: '30'
+
+- name: Set update cron (load balancer)
+  hosts: load_balancer
+  tasks:
+    - import_role:
+        name: auto_upgrade_cron
+      vars:
+        auto_upgrade_cron_hour: '9' # 4AM in EST
+        auto_upgrade_cron_minute: '0'
