@@ -33,7 +33,6 @@ module.exports =
     },
     dbHosts: {
         index: {
-            // host: '{{ db.host.private_ip }}',// private internal AWS IP
             host: '{{ db_host }}',
             port: '{{ db_port }}',
             auth: {
