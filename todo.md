@@ -57,22 +57,23 @@
   - [ ] nginx
   - [ ] pm2 lot-commander
 
-- [ ] restart machine (required by updates)
+- [*] restart machine (required by updates)
 
 - [ ] inventory
   - [ ] production
     - [ ] group_vars
-  - [ ] hanes?
-  - [ ] add db_servers to inventory
+  - [*] add db_servers to inventory
+  - [ ] dynamic inventory
+    - not needed for the deploy-from-scratch scripts but would be for update scripts
 
 - [ ] mongodb
   - [ ] XFS file system preferred for mongodb
-  - [ ] backup playbook/role
-    - [ ] mongodump
-    - [ ] tar dump
-    - [ ] save to S3
+  - [*] backup playbook/role
+    - [*] mongodump
+    - [*] tar dump
+    - [*] save to S3
     - [ ] (optional) purge old backups
-    - [ ] cron (either create a cron on a host machine or run playbook as a cron on the control machine)
+    - [*] cron (either create a cron on a host machine or run playbook as a cron on the control machine)
   - [ ] install-mongo role
     - [*] ensure DB directory
     - [ ] linux user associated with mongo
@@ -88,7 +89,7 @@
   - [ ] application-specifc setup (role, playbook or just a set of tasks?)
       - [ ] create db & collections
       - [ ] create indices
-      - [ ] backfill read from backup
+      - [*] backfill read from backup
 - [ ] distinct secrets.yml files for each environment/cluster
 
 - [ ] python virtual environment role
@@ -97,3 +98,9 @@
 
 # Bugs/Warnings
 - [ ] creating the admin user on mongo instances fails on the second time through since the first time uses local exception
+  - This can be circumvented with `ignore_errors` but something cleaner would be nice (some conditional for use with `when`)
+- [ ] intermittent mongorestore error on ec2 instance
+  - return code -9
+  - got explicit out of memeory error before but usually nothing in particular is visible in verbose output
+    - using a single worker and only doing one collection at a time in order to minimize load
+  - may have been caused by trying to restore the admin db. excluding that now.
