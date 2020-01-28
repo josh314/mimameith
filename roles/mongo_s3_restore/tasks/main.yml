@@ -89,6 +89,10 @@
     --username={{ mongo_s3_restore_db_user }}
     --password={{ mongo_s3_restore_db_password }}
     --gzip
+    --nsExclude=admin.*
+    --numParallelCollections=1
+    --numInsertionWorkersPerCollection=1
+    -vvvvv
 
 - name: Burninate working directory
   file:
