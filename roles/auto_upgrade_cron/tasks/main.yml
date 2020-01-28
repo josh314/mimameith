@@ -1,0 +1,21 @@
+- block: 
+  - name: Install the script for automatic apt upgrades and reboot
+    copy:
+      src: upgrade-packages-and-reboot.sh
+      dest: /usr/local/sbin
+      owner: root
+      group: root
+      mode: 0500
+
+  - name: Register the cron
+    cron:
+      name: auto_upgrade_cron
+      state: present
+      job: "/usr/local/sbin/upgrade-packages-and-reboot.sh"
+      month: "{{ auto_upgrade_cron_month }}"
+      day: "{{ auto_upgrade_cron_day }}"
+      weekday: "{{ auto_upgrade_cron_weekday }}"
+      hour: "{{ auto_upgrade_cron_hour }}"
+      minute: "{{ auto_upgrade_cron_minute }}"
+      user: root
+  become: yes

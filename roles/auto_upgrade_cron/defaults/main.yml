@@ -1,0 +1,8 @@
+---
+
+# By default, set cron to be every day at midnight
+auto_upgrade_cron_month: '*'
+auto_upgrade_cron_day: '*'
+auto_upgrade_cron_weekday: '*'
+auto_upgrade_cron_hour: '0'
+auto_upgrade_cron_minute: '0'
