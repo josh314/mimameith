@@ -67,6 +67,7 @@
     - not needed for the deploy-from-scratch scripts but would be for update scripts
 
 - [ ] mongodb
+  - [ ] SSL/TLS support
   - [ ] XFS file system preferred for mongodb
   - [*] backup playbook/role
     - [*] mongodump

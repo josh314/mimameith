@@ -85,6 +85,29 @@ This should be done semi-regularly. Note that old sessions will not be valid on 
 
 # Playbooks
 
+## `clone-mongo.yml`
+
+Use shell commands `mongodump` and `mongorestore` to clone mongo installation from from host to another.
+
+```
+ansible-playbook clone-mongo.yml \
+    -i 'localhost' \
+    -e src_db_host=ec2-35-174-137-1.compute-1.amazonaws.com \
+    -e src_db_user=**************** \
+    -e src_db_password=**************** \
+    -e dest_db_host='192.168.33.2' \
+    -e dest_db_user=****************** \
+    -e dest_db_password=****************** 
+```
+
+Other params with defaults are
+
+```
+src_db_port: '27017'
+dest_db_port: '27017'
+db: ehdb
+```
+
 ## `mongo-backup.yml`
 
 Runs `mongo_tools` and `mongo_s3_backup` roles. Usage example:
