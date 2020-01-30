@@ -1,0 +1,26 @@
+- name: Clone mongo database from one host to another
+  hosts: localhost
+  vars:
+    src_db_port: '27017'
+    dest_db_port: '27017'
+    db: ehdb
+
+  tasks:
+
+    - name: Pipe mongodump into mongorestore
+      shell: >
+        mongodump
+        --db={{ db }}
+        --host={{ src_db_host }}
+        --port={{ src_db_port | default('27017') }}
+        --username={{ src_db_user }}
+        --password={{ src_db_password }}
+        --archive
+        |
+        mongorestore 
+        --host={{ dest_db_host }}
+        --port={{ dest_db_port | default('27017') }}
+        --username={{ dest_db_user }}
+        --password={{ dest_db_password }}
+        --archive
+        -vvvvv
