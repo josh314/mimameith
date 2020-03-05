@@ -30,15 +30,6 @@
       vars:
         nodejs_version: "12.x"
 
-    # # install pm2
-    - name: install pm2
-      become: yes
-      npm: name=pm2 global=yes production=yes
-
-    - name: Setup pm2 startup script
-      command: env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u ubuntu --hp /home/ubuntu
-      become: yes
-
     # Install nginx and configure as a reverse proxy for the application
     - import_role:
         name: nginx
@@ -61,8 +52,10 @@
         db_app_user: "{{ db.auth.app.user }}"
         db_app_password: "{{ db.auth.app.password }}"
 
-    - name: update pm2 startup process list
-      command: pm2 save
+    - import_role:
+        name: pm2_app_service
+      vars:
+        pm2_app_service__path: "{{ path }}"
 
     - name: restart nginx
       become: yes
