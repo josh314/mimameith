@@ -87,7 +87,7 @@ This should be done semi-regularly. Note that old sessions will not be valid on 
 
 ## `clone-mongo.yml`
 
-Use shell commands `mongodump` and `mongorestore` to clone mongo installation from from host to another.
+Use shell commands `mongodump` and `mongorestore` to clone mongo installation from one host to another.
 
 ```
 ansible-playbook clone-mongo.yml \
