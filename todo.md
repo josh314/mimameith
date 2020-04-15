@@ -54,8 +54,8 @@
   - [ ] compare the ansible_user with the user responsible for running lot-commander
 
 - [ ] test behavior on reboot
-  - [ ] nginx
-  - [ ] pm2 lot-commander
+  - [*] nginx
+  - [*] pm2 lot-commander
 
 - [*] restart machine (required by updates)
 
