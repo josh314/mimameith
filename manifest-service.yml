@@ -1,0 +1,35 @@
+- name: Provision manifest service application
+  hosts: manifest_service
+
+  vars:
+    expresshop_manifest_service__remote_deploy_key_file: /home/{{ ansible_user }}/.ssh/id_ed25519
+    application_path: "{{ ansible_env.HOME }}/expresshop-manifest-service"
+
+  tasks:
+
+    - name: Upgrade packages
+      become: yes
+      apt: 
+        upgrade: dist
+        update_cache: yes
+        cache_valid_time: 3600
+
+    # install npm/node and global node packages
+    - import_role:
+        name: geerlingguy.nodejs
+      become: yes
+      vars:
+        nodejs_version: "12.x"
+
+    - import_role: 
+        name: expresshop_manifest_service
+      vars:
+        expresshop_manifest_service__project_path: "{{ application_path }}"
+
+    - import_role:
+        name: pm2_app_service
+      vars:
+        pm2_app_service__path: "{{ application_path }}"
+
+    - import_role:
+        name: cleanup
