@@ -1,6 +1,14 @@
-# Ansible deployment for Lot Commander
-Playbooks and roles for deploying Lot Commander application stack. See below for detailed playbook descriptions. 
+# Ansible deployment for Mimameith
+Playbooks and roles for deploying Mímameith, the distributed application stack for internal Expresshop operations. See below for detailed playbook descriptions. 
 Contains secret file(s) encrypted with `ansible-vault`.
+
+### Etymology
+
+"Mimameith" is an anglicization of **Mímameiðr**, another name for the Norse world-tree, Yggdrasil. As per [Wikipedia](https://en.wikipedia.org/wiki/M%C3%ADmamei%C3%B0r):
+
+> In Norse mythology, Mímameiðr (Old Norse "Mimi's tree") is a tree whose branches stretch over every land, is unharmed by fire or metal, bears fruit that assists pregnant women, and upon whose highest bough roosts the cock Víðópnir. Mímameiðr is solely attested in the Old Norse poem Fjölsvinnsmál. Due to parallels between descriptions of the two, scholars generally consieder Mímameiðr to be another name for the world tree Yggdrasil, along with the similarly named Hoddmímis holt, a wood within which Líf and Lífthrasir are foretold to take refuge during the events of Ragnarök. Mímameiðr is sometimes modernly anglicized as Mimameid or Mimameith.
+
+However it is named, the world tree's roots and branches connect all the realms of Norse mythology, just as Mimameith connects the different aspects of our business.
 
 ## Vagrant
 
