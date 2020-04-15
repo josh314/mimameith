@@ -1,0 +1,6 @@
+---
+
+MONGODB_S3_BACKUP_BUCKET: expresshop-mongodump
+
+mongo_s3_restore_s3_bucket: "{{ MONGODB_S3_BACKUP_BUCKET }}"
+mongo_s3_backup_s3_bucket: "{{ MONGODB_S3_BACKUP_BUCKET }}"

@@ -1,0 +1,51 @@
+---
+
+####################################################
+# Control
+# =======
+#
+# These variables are for the control machine which performs the EC2 provisioning
+#
+############################################################
+
+#################################
+# Environment & stack settings
+
+# environment name
+stack_env: prod
+org: wholesale-ninjas
+
+
+# AWS instance settings for the database servers
+db_server_ami: ami-0d03e44a2333dea65
+db_server_instance_type: t2.micro
+db_server_region: us-east-1
+db_server_key_name: josh-key-pair-useast
+db_server_key_file: /Users/josh/.ssh/josh-key-pair-useast.pem
+num_db_servers: 1
+
+# AWS instance settings for the load balancer
+load_balancer_ami: ami-0d03e44a2333dea65
+load_balancer_instance_type: t2.nano
+load_balancer_region: us-east-1
+load_balancer_key_name: josh-key-pair-useast
+load_balancer_key_file: /Users/josh/.ssh/josh-key-pair-useast.pem
+
+load_balancer_eip: 34.235.84.237
+
+# AWS instance settings for the application servers
+app_server_ami: ami-0d03e44a2333dea65
+app_server_instance_type: t2.micro
+app_server_region: us-east-1
+app_server_key_name: josh-key-pair-useast
+app_server_key_file: /Users/josh/.ssh/josh-key-pair-useast.pem
+num_app_servers: 1
+
+
+# AWS instance settings for the manifest service instances
+manifest_service_ami: ami-0d03e44a2333dea65
+manifest_service_instance_type: t2.nano
+manifest_service_region: us-east-1
+manifest_service_key_name: josh-key-pair-useast
+manifest_service_key_file: /Users/josh/.ssh/josh-key-pair-useast.pem
+num_manifest_service: 1

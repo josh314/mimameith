@@ -1,0 +1,16 @@
+---
+################################################
+# Globals
+# =======
+#
+# These varaibles are needed by multiple hosts
+################################################
+
+# db server vars
+
+db_port: 27017
+
+
+# App server vars
+
+application_repository_version: master
