@@ -51,6 +51,8 @@
         count_tag: "{{ db_server_count_tags }}"
       register: ec2_db_servers
 
+    # - debug: var=ec2_db_servers
+
     - name: Launch the load balancer instance in EC2
       ec2:
         wait: yes
@@ -67,6 +69,8 @@
         count_tag: "{{ load_balancer_count_tags }}"
       register: ec2_load_balancer
 
+    # - debug: var=ec2_load_balancer
+
     - name: Launch the manifest service instance(s) in EC2
       ec2:
         wait: yes
@@ -82,6 +86,8 @@
         exact_count: "{{ num_manifest_service }}"
         count_tag: "{{ manifest_service_count_tags }}"
       register: ec2_manifest_service
+
+    # - debug: var=ec2_manifest_service
 
     - name: Launch the application instance(s) in EC2
       ec2:
@@ -101,9 +107,12 @@
       register: ec2_app_servers
 
     # - debug: var=ec2_app_servers
-    # - debug: var=ec2_load_balancer
 
     # Setting these facts here since registered variables will not be available in the later playbooks
+    - name: "Setting fact: mongodb_server_deployed"
+      set_fact:
+        mongodb_server_deployed: '{{ ec2_db_servers.changed }}'
+
     - name: "Setting fact: app_server_addr"
       set_fact:
         app_server_addr: '{{ ec2_app_servers.tagged_instances | map(attribute="private_ip") | map("regex_replace", "^(.*)$", "\1:80") | list }}'
@@ -185,6 +194,7 @@
   import_playbook: mongo-server.yml
   vars:
     mongodb_bind_ip: 127.0.0.1,{{ hostvars[ groups['control'][0] ].db_server_host }}
+    mongo_server__skip_mongo_setup: "{{ not hostvars[ groups['control'][0] ].mongodb_server_deployed }}"
 
 - name: Configure load balancer
   import_playbook: load-balancer.yml

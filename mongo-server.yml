@@ -25,6 +25,7 @@
     # Install and configure mongodb
     - import_role:
         name: mongo_setup
+      when: not mongo_server__skip_mongo_setup
 
     - import_role:
         name: cleanup
