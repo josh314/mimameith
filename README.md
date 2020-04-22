@@ -129,3 +129,14 @@ ansible-playbook mongo-backup.yml \
 ```
 
 In the example above, we are running ansible on a vagrant-provisioned control server while the db to be copied lives at `ec2-35-174-137-1.compute-1.amazonaws.com`. Without the `mongo_s3_backup_host` var, the playbook will try to copy from mongodb installation on the server the playbook is being run against.
+
+## `ec2-stack.yml`
+
+Installs a stack to support lot-commander
+
+```
+ansible-playbook ec2-stack.yml \
+    -i inventory/prod/hosts \
+    --vault-password-file password \
+    -e version=<branch name of lot-commander>
+```
