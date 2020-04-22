@@ -138,5 +138,5 @@ Installs a stack to support lot-commander
 ansible-playbook ec2-stack.yml \
     -i inventory/prod/hosts \
     --vault-password-file password \
-    -e version=<branch name of lot-commander>
+    -e application_repository_version=<branch name of lot-commander>
 ```
