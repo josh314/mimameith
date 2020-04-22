@@ -16,19 +16,21 @@
       env: "{{ stack_env }}"
       version: "{{ application_repository_version }}"
     load_balancer_count_tags:
+      Name: lot-commander_lb
       tier: load_balancer
       stack: lot-commander
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
     db_server_count_tags:
+      Name: mongodb-server
       tier: database
       stack: lot-commander
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
     manifest_service_count_tags:
+      Name: manifest-svc
       tier: service
       stack: mimameith
-      name: manifest-svc
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
 
@@ -108,6 +110,19 @@
 
     # - debug: var=ec2_app_servers
 
+    # Adding instance names
+    - name: Tagging app server instances with a Name
+      ec2_tag:
+        resource: "{{ app_server.id }}"
+        tags:
+          Name: "lot-commander_{{idx}}"
+      loop: "{{ ec2_app_servers.tagged_instances }}"
+      loop_control:
+        loop_var: app_server
+        index_var: idx
+        label: "{{ app_server.id }}"
+      when: app_server.tags.Name is not defined
+
     # Setting these facts here since registered variables will not be available in the later playbooks
     - name: "Setting fact: mongodb_server_deployed"
       set_fact:
@@ -134,6 +149,8 @@
 
     # - debug: var=ec2_load_balancer_eip_result
 
+    # Adding newly provisioned hosts to inventory
+
     - name: add db server host(s) to inventory
       add_host:
         hostname: "{{ item.public_ip }}"
@@ -155,13 +172,16 @@
 
     - name: add app server host(s) to inventory
       add_host:
-        hostname: "{{ item.public_ip }}"
+        hostname: "{{ app_server.public_ip }}"
         ansible_user: ubuntu
         ansible_ssh_private_key_file: "{{ app_server_key_file }}"
         groups:
           - app_servers
-      with_items: "{{ ec2_app_servers.tagged_instances }}"
-      when: item.public_ip is defined
+      loop: "{{ ec2_app_servers.tagged_instances }}"
+      loop_control:
+        loop_var: app_server
+        label: "instance: {{ app_server.id }}, public_dns: {{ app_server.public_dns_name }}"
+      when: app_server.public_ip is defined
 
     - name: add manifest service host(s) to inventory
       add_host:
