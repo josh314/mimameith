@@ -25,6 +25,12 @@
       stack: lot-commander
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
+    manifest_service_count_tags:
+      tier: service
+      stack: mimameith
+      name: manifest-svc
+      org: "{{ org | default('') }}"
+      env: "{{ stack_env }}"
 
 
   tasks:
@@ -61,6 +67,22 @@
         count_tag: "{{ load_balancer_count_tags }}"
       register: ec2_load_balancer
 
+    - name: Launch the manifest service instance(s) in EC2
+      ec2:
+        wait: yes
+        image: "{{ manifest_service_ami }}"
+        region: "{{ manifest_service_region }}"
+        instance_type: "{{ manifest_service_instance_type }}"
+        key_name: "{{ manifest_service_key_name }}"
+        group:
+          - Internal
+          - default
+          - "expresshop_service::manifest"
+        instance_tags: "{{ manifest_service_count_tags }}"
+        exact_count: "{{ num_manifest_service }}"
+        count_tag: "{{ manifest_service_count_tags }}"
+      register: ec2_manifest_service
+
     - name: Launch the application instance(s) in EC2
       ec2:
         wait: yes
@@ -89,6 +111,10 @@
     - name: "Setting fact: db_server_host"
       set_fact:
         db_server_host: '{{ ec2_db_servers.tagged_instances[0].private_ip }}'
+
+    - name: "Setting fact: manifest_service_host"
+      set_fact:
+        manifest_service_host: '{{ ec2_manifest_service.tagged_instances[0].private_ip }}'
 
     - name: Associate Elastic IP with load balancer
       ec2_eip:
@@ -128,6 +154,15 @@
       with_items: "{{ ec2_app_servers.tagged_instances }}"
       when: item.public_ip is defined
 
+    - name: add manifest service host(s) to inventory
+      add_host:
+        hostname: "{{ item.public_ip }}"
+        ansible_user: ubuntu
+        ansible_ssh_private_key_file: "{{ manifest_service_key_file }}"
+        groups:
+          - manifest_service
+      with_items: "{{ ec2_manifest_service.tagged_instances }}"
+      when: item.public_ip is defined
 
     # TODO: use wait_for_connection module instead of wait_for?
     - name: wait for newly added hosts to be ready for SSH connections
@@ -149,7 +184,6 @@
 - name: Mongo server playbook
   import_playbook: mongo-server.yml
   vars:
-    # mongodb_port: foobar
     mongodb_bind_ip: 127.0.0.1,{{ hostvars[ groups['control'][0] ].db_server_host }}
 
 - name: Configure load balancer
@@ -161,6 +195,12 @@
   import_playbook: app.yml
   vars:
     db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+    manifest_service_location: "{{ hostvars[ groups['control'][0] ].manifest_service_host }}:{{ hostvars[ groups['manifest_service'][0] ].manifest_service__port }}"
+
+- name: Manifest service playbook
+  import_playbook: manifest-service.yml
+  vars:
+    expresshop_manifest_service__application_port: "{{ manifest_service__port }}"
 
 ###########################################################
 # Set update crons
@@ -188,6 +228,16 @@
 
 - name: Set update cron (load balancer)
   hosts: load_balancer
+  tasks:
+    - import_role:
+        name: auto_upgrade_cron
+      vars:
+        auto_upgrade_cron_hour: '9' # 4AM in EST
+        auto_upgrade_cron_minute: '0'
+
+# This one can run whenever
+- name: Set update cron (manifest service)
+  hosts: manifest_service
   tasks:
     - import_role:
         name: auto_upgrade_cron
