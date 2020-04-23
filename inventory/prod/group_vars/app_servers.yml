@@ -9,3 +9,5 @@
 ############################################################
 
 shopify_store: wholesale_ninjas
+
+lot_commander__aplication_env: production
