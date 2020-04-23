@@ -1,4 +1,4 @@
-- name: configure provisioned servers
+- name: Configure load balancer
   hosts: load_balancer
   become: yes
   vars_files:
