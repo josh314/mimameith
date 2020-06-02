@@ -148,13 +148,13 @@
         zone: wholesaleninjas.com
         record: "{{ stack_env }}--ehdb{{ idx }}.wholesaleninjas.com"
         type: A
-        value: "{{ ec2_db_servers.tagged_instances[0].public_ip }}"
+        value: "{{ ec2_db_servers.tagged_instances[0].private_ip }}"
         wait: yes
       loop: "{{ ec2_db_servers.tagged_instances }}"
       loop_control:
         loop_var: server
         index_var: idx
-        label: "public_ip: {{ server.public_ip }} => domain: {{ stack_env }}--ehdb{{ idx }}.wholesaleninjas.com"
+        label: "private_ip: {{ server.private_ip }} => domain: {{ stack_env }}--ehdb{{ idx }}.wholesaleninjas.com"
 
     - name: set DNS entries for app servers
       route53:
@@ -163,12 +163,12 @@
         zone: wholesaleninjas.com
         record: "{{ stack_env }}--lot-commander.app{{ idx }}.wholesaleninjas.com"
         type: A
-        value: "{{ server.public_ip }}"
+        value: "{{ server.private_ip }}"
       loop: "{{ ec2_app_servers.tagged_instances }}"
       loop_control:
         loop_var: server
         index_var: idx
-        label: "public_ip: {{ server.public_ip }} => domain: {{ stack_env }}--lot-commander.app{{ idx }}.wholesaleninjas.com"
+        label: "private_ip: {{ server.private_ip }} => domain: {{ stack_env }}--lot-commander.app{{ idx }}.wholesaleninjas.com"
 
     - name: set DNS entries for manifest service
       route53:
@@ -177,12 +177,12 @@
         zone: wholesaleninjas.com
         record: "{{ stack_env }}--manifest-svc{{ idx }}.wholesaleninjas.com"
         type: A
-        value: "{{ server.public_ip }}"
+        value: "{{ server.private_ip }}"
       loop: "{{ ec2_manifest_service.tagged_instances }}"
       loop_control:
         loop_var: server
         index_var: idx
-        label: "public_ip: {{ server.public_ip }} => domain: {{ stack_env }}--manifest-svc{{ idx }}.wholesaleninjas.com"
+        label: "private_ip: {{ server.private_ip }} => domain: {{ stack_env }}--manifest-svc{{ idx }}.wholesaleninjas.com"
 
     - name: set DNS entries for load balancer
       route53:
@@ -267,13 +267,13 @@
   import_playbook: load-balancer.yml
   vars: 
     server_nodes: 
-      - "{{ hostvars[ groups['control'][0] ].stack_env }}--lot-commander.app0.wholesaleninjas.com"
+      - "dev--lot-commander.app0.wholesaleninjas.com"
 
 - name: Application playbook
   import_playbook: app.yml
   vars:
-    db_host: "{{ hostvars[ groups['control'][0] ].stack_env }}--ehdb0.wholesaleninjas.com"
-    manifest_service_location: "{{ hostvars[ groups['control'][0] ].stack_env }}--manifest-svc0.wholesaleninjas.com:{{ hostvars[ groups['manifest_service'][0] ].manifest_service__port }}"
+    db_host: "dev--ehdb0.wholesaleninjas.com"
+    manifest_service_location: "dev--manifest-svc0.wholesaleninjas.com:{{ hostvars[ groups['manifest_service'][0] ].manifest_service__port }}"
 
 - name: Manifest service playbook
   import_playbook: manifest-service.yml
