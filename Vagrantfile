@@ -197,7 +197,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         ansible.playbook = "app.yml"
         ansible.extra_vars = {
           skip_application_auth: REQUIRE_APPLICATION_AUTH.equal?(false),
-          application_repository_version: APPLICATION_VERSION,
+          lot_commander__application_repository_version: APPLICATION_VERSION,
           shopify_store: SHOPIFY_STORE,
           db_host: MONGO_SERVER_IP,
           db_port: '27017'

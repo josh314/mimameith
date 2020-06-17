@@ -13,4 +13,4 @@ db_port: 27017
 
 # App server vars
 
-application_repository_version: master
+lot_commander__application_repository_version: master

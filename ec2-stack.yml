@@ -14,7 +14,7 @@
       stack: lot-commander
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
-      version: "{{ application_repository_version }}"
+      version: "{{ lot_commander__application_repository_version }}"
     load_balancer_count_tags:
       Name: lot-commander_lb
       tier: load_balancer

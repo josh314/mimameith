@@ -18,7 +18,7 @@ org: wholesale-ninjas
 
 # AWS instance settings for the database servers
 db_server_ami: ami-0d03e44a2333dea65
-db_server_instance_type: t2.nano
+db_server_instance_type: t2.micro
 db_server_region: us-east-1
 db_server_key_name: josh-key-pair-useast
 db_server_key_file: /Users/josh/.ssh/josh-key-pair-useast.pem
