@@ -1,0 +1,24 @@
+- name: Setting up the cronbox server
+  hosts: cronbox
+  become: yes
+  vars_files:
+    - secrets.yml
+  tasks:
+
+    - import_role:
+        name: shopify_discount_code_notifier_cron
+      vars:
+        shopify_discount_code_notifier_cron__shopify_store_name: "{{ shopify.apps.shopify_discount_code_notifier.store_name }}"
+        shopify_discount_code_notifier_cron__shopify_api_key: "{{ shopify.apps.shopify_discount_code_notifier.api_key }}"
+        shopify_discount_code_notifier_cron__shopify_password: "{{ shopify.apps.shopify_discount_code_notifier.password }}"
+
+        shopify_discount_code_notifier_cron__sendgrid_api_key: "{{ sendgrid.api_keys.shopify_discount_code_notifier }}"
+
+    - import_role:
+        name: shopify_hide_soldout_products_cron
+      vars:
+        shopify_hide_soldout_products_cron__shopify_store_name: "{{ shopify.apps.shopify_hide_soldout_products.store_name }}"
+        shopify_hide_soldout_products_cron__shopify_api_key: "{{ shopify.apps.shopify_hide_soldout_products.api_key }}"
+        shopify_hide_soldout_products_cron__shopify_password: "{{ shopify.apps.shopify_hide_soldout_products.password }}"
+
+        shopify_hide_soldout_products_cron__shopify_inventory_location_id: "{{ shopify.apps.shopify_hide_soldout_products.inventory_location_id }}"

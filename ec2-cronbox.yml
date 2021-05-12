@@ -1,0 +1,94 @@
+
+- name: Provision AWS resources
+  hosts: control
+  gather_facts: no
+  vars:
+    cronbox_count_tags:
+      Name: cronbox
+      tier: crons
+      org: "{{ org | default('') }}"
+      env: "{{ stack_env }}"
+
+
+###########################################################
+# Provision resources
+# ===================
+#
+###########################################################
+
+
+  tasks:
+
+    - name: Launch the server instance in EC2
+      ec2:
+        wait: yes
+        image: "{{ cronbox_ami }}"
+        region: "{{ cronbox_region }}"
+        instance_type: "{{ cronbox_instance_type }}"
+        key_name: "{{ cronbox_key_name }}"
+        group:
+          - Internal
+          - default
+        instance_tags: "{{ cronbox_count_tags }}"
+        exact_count: "{{ num_cronbox }}"
+        count_tag: "{{ cronbox_count_tags }}"
+      register: ec2_cronbox
+
+    - name: Associate Elastic IP with cronbox
+      ec2_eip:
+        device_id: "{{ ec2_cronbox.tagged_instances[0].id }}"
+        ip: "{{ cronbox_eip }}"
+        region: "{{ ec2_cronbox.tagged_instances[0].region }}"
+      register: ec2_cronbox_eip_result
+
+    - name: add load balancer host elastic IP to inventory
+      add_host:
+        hostname: "{{ ec2_cronbox_eip_result.public_ip }}"
+        ansible_user: ubuntu
+        ansible_ssh_private_key_file: "{{ cronbox_key_file }}"
+        groups:
+          - cronbox
+      when: ec2_cronbox_eip_result.public_ip is defined
+
+    # - name: add cronbox host(s) to inventory
+    #   add_host:
+    #     hostname: "{{ item.public_ip }}"
+    #     ansible_user: ubuntu
+    #     ansible_ssh_private_key_file: "{{ cronbox_key_file }}"
+    #     groups:
+    #       - cronbox
+    #   with_items: "{{ ec2_cronbox.tagged_instances }}"
+    #   when: item.public_ip is defined
+
+    # TODO: use wait_for_connection module instead of wait_for?
+    - name: wait for newly added hosts to be ready for SSH connections
+      wait_for:
+        host: "{{ item.public_ip }}"
+        port: 22
+        search_regex: OpenSSH
+      with_items: "{{ ec2_cronbox.tagged_instances }}"
+      when: item.public_ip is defined
+
+###########################################################
+# Configure provisioned resources
+# ===============================
+#
+###########################################################
+
+- name: Cronbox server playbook
+  import_playbook: cronbox.yml
+
+###########################################################
+# Set update crons
+# ================
+# 
+###########################################################
+
+- name: Set update cron (cronbox)
+  hosts: cronbox
+  tasks:
+    - import_role:
+        name: auto_upgrade_cron
+      vars:
+        auto_upgrade_cron_hour: '8' # 3AM in EST
+        auto_upgrade_cron_minute: '0'
