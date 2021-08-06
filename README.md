@@ -1,4 +1,4 @@
-# Ansible deployment for Mimameith
+# Ansible deployment for Mímameith
 Playbooks and roles for deploying Mímameith, the distributed application stack for internal Expresshop operations. See below for detailed playbook descriptions. 
 Contains secret file(s) encrypted with `ansible-vault`.
 

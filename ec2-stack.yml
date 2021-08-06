@@ -66,6 +66,7 @@
           - Internal
           - default
           - "lot_commander::load_balancer"
+          - public web server
         instance_tags: "{{ load_balancer_count_tags }}"
         exact_count: 1
         count_tag: "{{ load_balancer_count_tags }}"
