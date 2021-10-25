@@ -51,6 +51,7 @@
         instance_tags: "{{ db_server_count_tags }}"
         exact_count: "{{ num_db_servers }}"
         count_tag: "{{ db_server_count_tags }}"
+        monitoring: yes
       register: ec2_db_servers
 
     # - debug: var=ec2_db_servers
@@ -70,6 +71,7 @@
         instance_tags: "{{ load_balancer_count_tags }}"
         exact_count: 1
         count_tag: "{{ load_balancer_count_tags }}"
+        monitoring: yes
       register: ec2_load_balancer
 
     # - debug: var=ec2_load_balancer
@@ -88,6 +90,7 @@
         instance_tags: "{{ manifest_service_count_tags }}"
         exact_count: "{{ num_manifest_service }}"
         count_tag: "{{ manifest_service_count_tags }}"
+        monitoring: yes
       register: ec2_manifest_service
 
     # - debug: var=ec2_manifest_service
@@ -107,6 +110,7 @@
         instance_tags: "{{ app_server_count_tags }}"
         exact_count: "{{ num_app_servers }}"
         count_tag: "{{ app_server_count_tags }}"
+        monitoring: yes
       register: ec2_app_servers
 
     # - debug: var=ec2_app_servers

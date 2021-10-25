@@ -28,16 +28,16 @@
         name: mongo_setup
       # when: not mongo_server__skip_mongo_setup
 
-    - import_role:
-        name: shopify_dump_crons
-      vars:
-        shopify_dump_crons__project_path: "/home/{{ ansible_user }}/cron/shopify-dump"
-        shopify_dump_crons__shopify_store_name: "{{ shopify.apps.shopify_data_dump.store_name }}"
-        shopify_dump_crons__shopify_api_key: "{{ shopify.apps.shopify_data_dump.api_key }}"
-        shopify_dump_crons__shopify_password: "{{ shopify.apps.shopify_data_dump.password }}"
-        shopify_dump_crons__mongo_db_name: ehdb
-        shopify_dump_crons__mongo_user: "{{ mongodb_app_user }}"
-        shopify_dump_crons__mongo_password: "{{ mongodb_app_password }}"
+    # - import_role:
+    #     name: shopify_dump_crons
+    #   vars:
+    #     shopify_dump_crons__project_path: "/home/{{ ansible_user }}/cron/shopify-dump"
+    #     shopify_dump_crons__shopify_store_name: "{{ shopify.apps.shopify_data_dump.store_name }}"
+    #     shopify_dump_crons__shopify_api_key: "{{ shopify.apps.shopify_data_dump.api_key }}"
+    #     shopify_dump_crons__shopify_password: "{{ shopify.apps.shopify_data_dump.password }}"
+    #     shopify_dump_crons__mongo_db_name: ehdb
+    #     shopify_dump_crons__mongo_user: "{{ mongodb_app_user }}"
+    #     shopify_dump_crons__mongo_password: "{{ mongodb_app_password }}"
 
     - import_role:
         name: cleanup
