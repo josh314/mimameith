@@ -215,16 +215,16 @@
 #
 ###########################################################
 
-- name: Mongo server playbook
-  import_playbook: mongo-server.yml
-  vars:
-    mongodb_bind_ip: 127.0.0.1,{{ hostvars[ groups['control'][0] ].db_server_host }}
-    mongo_server__skip_mongo_setup: "{{ not hostvars[ groups['control'][0] ].mongodb_server_deployed }}"
+# - name: Mongo server playbook
+#   import_playbook: mongo-server.yml
+#   vars:
+#     mongodb_bind_ip: 127.0.0.1,{{ hostvars[ groups['control'][0] ].db_server_host }}
+#     mongo_server__skip_mongo_setup: "{{ not hostvars[ groups['control'][0] ].mongodb_server_deployed }}"
 
-- name: Configure load balancer
-  import_playbook: load-balancer.yml
-  vars: 
-    server_nodes: "{{ hostvars[ groups['control'][0] ].app_server_addr }}"
+# - name: Configure load balancer
+#   import_playbook: load-balancer.yml
+#   vars: 
+#     server_nodes: "{{ hostvars[ groups['control'][0] ].app_server_addr }}"
 
 - name: Application playbook
   import_playbook: app.yml
@@ -232,10 +232,10 @@
     db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
     manifest_service_location: "{{ hostvars[ groups['control'][0] ].manifest_service_host }}:{{ hostvars[ groups['manifest_service'][0] ].manifest_service__port }}"
 
-- name: Manifest service playbook
-  import_playbook: manifest-service.yml
-  vars:
-    expresshop_manifest_service__application_port: "{{ manifest_service__port }}"
+# - name: Manifest service playbook
+#   import_playbook: manifest-service.yml
+#   vars:
+#     expresshop_manifest_service__application_port: "{{ manifest_service__port }}"
 
 ###########################################################
 # Set update crons

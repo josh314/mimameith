@@ -50,6 +50,8 @@
         - ler53_key_file_name: "{{ ssl_key_file }}"
         - ler53_cert_file_name: "{{ ssl_cert_file }}"
         - ler53_csr_file_name: "{{ ssl_csr_file }}"
+        - ler53_account_email: josh314@gmail.com
+        - ler53_account_email: "{{ maintenance_contact_email }}"
       when: load_balancer_self_signed_ssl is undefined or not load_balancer_self_signed_ssl
 
     - name: restart nginx
