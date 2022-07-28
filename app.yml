@@ -40,6 +40,12 @@
         upstream_servers:
           - localhost:{{ app_port }}
 
+    - name: Stop app if already running. Ignore error caused by app not running yet 
+      command: pm2 stop process.json
+      args:
+        chdir: "{{ path }}"
+      ignore_errors: yes
+
     - import_role: 
         name: lot_commander
       vars:
