@@ -28,7 +28,7 @@
         name: geerlingguy.nodejs
       become: yes
       vars:
-        nodejs_version: "12.x"
+        nodejs_version: "16.x"
 
     # Install nginx and configure as a reverse proxy for the application
     - import_role:

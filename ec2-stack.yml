@@ -263,21 +263,21 @@
 #   vars: 
 #     server_nodes: "{{ hostvars[ groups['control'][0] ].app_server_addr }}"
 
-# - name: Application playbook
-#   import_playbook: app.yml
-#   vars:
-#     db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
-#     manifest_service_location: "{{ hostvars[ groups['control'][0] ].manifest_service_host }}:{{ hostvars[ groups['manifest_service'][0] ].manifest_service__port }}"
+- name: Application playbook
+  import_playbook: app.yml
+  vars:
+    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+    manifest_service_location: "{{ hostvars[ groups['control'][0] ].manifest_service_host }}:{{ hostvars[ groups['manifest_service'][0] ].manifest_service__port }}"
 
 # - name: Manifest service playbook
 #   import_playbook: manifest-service.yml
 #   vars:
 #     expresshop_manifest_service__application_port: "{{ manifest_service__port }}"
 
-- name: Shopify data dump cron server
-  import_playbook: shopify-dump-cron-server.yml
-  vars:
-    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+# - name: Shopify data dump cron server
+#   import_playbook: shopify-dump-cron-server.yml
+#   vars:
+#     db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
 
 ###########################################################
 # Set update crons
