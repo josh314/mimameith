@@ -68,3 +68,21 @@ shopify_dump_cron_server_region: us-east-1
 shopify_dump_cron_server_key_name: josh-key-pair-useast
 shopify_dump_cron_server_key_file: ~/.ssh/josh-key-pair-useast.pem
 num_shopify_dump_cron_server: 1
+
+
+# AWS instance settings for the shopify_mailchimp_campaigner_cron server
+shopify_mailchimp_campaigner_server_ami: ami-09e67e426f25ce0d7 # ubuntu 20.4 LTS
+shopify_mailchimp_campaigner_server_instance_type: t2.nano
+shopify_mailchimp_campaigner_server_region: us-east-1
+shopify_mailchimp_campaigner_server_key_name: josh-key-pair-useast
+shopify_mailchimp_campaigner_server_key_file: ~/.ssh/josh-key-pair-useast.pem
+num_shopify_mailchimp_campaigner_server: 1
+
+
+# AWS instance settings for the product_data_cache_updater server
+product_data_cache_updater_server_ami: ami-09e67e426f25ce0d7 # ubuntu 20.4 LTS
+product_data_cache_updater_server_instance_type: t2.nano
+product_data_cache_updater_server_region: us-east-1
+product_data_cache_updater_server_key_name: josh-key-pair-useast
+product_data_cache_updater_server_key_file: ~/.ssh/josh-key-pair-useast.pem
+num_product_data_cache_updater_server: 1

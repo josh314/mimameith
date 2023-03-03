@@ -1,0 +1,77 @@
+- name: configure shopify mailchimp campaigner server
+  hosts: shopify_mailchimp_campaigner
+  vars_files:
+    - secrets.yml
+  vars:
+    shopify_mailchimp_campaigner__application_repository_version: production
+    path: "{{ ansible_env.HOME }}/shopify-mailchimp-campaigner"
+
+  # TODO? use HTTP2
+
+  tasks:
+
+    - name: Upgrade packages
+      become: yes
+      apt:
+        upgrade: yes
+        update_cache: yes
+        cache_valid_time: 3600
+
+    # install npm/node and global node packages
+    - import_role:
+        name: geerlingguy.nodejs
+      become: yes
+      vars:
+        nodejs_version: "18.x"
+
+    - import_role:
+        name: shopify_mailchimp_campaigner
+      vars:
+        shopify_mailchimp_campaigner__application_repository: git@gitlab.com:wazue/shopify-mailchimp-campaigner.git
+        shopify_mailchimp_campaigner__project_path: "{{ path }}"
+        local_deploy_key_file: ~/.ssh/aws_deploy_key_ed25519
+        remote_deploy_key_file: /home/{{ ansible_user }}/.ssh/id_ed25519
+        shopify_mailchimp_campaigner__mailchimp_settings: "{{ mailchimp }}"
+        shopify_mailchimp_campaigner__shopify_credentials: "{{ shopify.apps.shopify_mailchimp_campaigner }}"
+
+
+    ####################################################
+    # Set cron(s)
+    # =========
+    ####################################################
+
+    # - name: Set the test cron
+    #   cron:
+    #     name: shopify_mailchimp_campaigner
+    #     state: present
+    #     job: "node {{ shopify_mailchimp_campaigner__project_path }}/index.js -s {{ shopify_mailchimp_campaigner__project_path }}/campaign-settings/test.js >> {{ shopify_mailchimp_campaigner__log_path }}/cronlog 2>> {{ shopify_mailchimp_campaigner__log_path }}/cronlog.err"
+    #     month: "*"
+    #     day: "*"
+    #     weekday: "*"
+    #     hour: "19"
+    #     minute: "0"
+
+    - name: Set the new lots cron
+      cron:
+        name: shopify_mailchimp_campaigner (new lots)
+        state: present
+        job: "node {{ shopify_mailchimp_campaigner__project_path }}/index.js -s {{ shopify_mailchimp_campaigner__project_path }}/campaign-settings/new-lots.js >> {{ shopify_mailchimp_campaigner__log_path }}/cronlog 2>> {{ shopify_mailchimp_campaigner__log_path }}/cronlog.err"
+        month: "*"
+        day: "*"
+        weekday: "1-5"
+        hour: "19"
+        minute: "0"
+
+    - name: Set the everyday bargains cron
+      cron:
+        name: shopify_mailchimp_campaigner (everyday bargains)
+        state: present
+        job: "node {{ shopify_mailchimp_campaigner__project_path }}/index.js -s {{ shopify_mailchimp_campaigner__project_path }}/campaign-settings/everyday-bargains.js >> {{ shopify_mailchimp_campaigner__log_path }}/cronlog 2>> {{ shopify_mailchimp_campaigner__log_path }}/cronlog.err"
+        month: "*"
+        day: "*"
+        weekday: "1,3,5"
+        hour: "14"
+        minute: "0"
+
+    - import_role:
+        name: cleanup

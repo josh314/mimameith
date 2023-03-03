@@ -40,6 +40,20 @@
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
       version: "{{ shopify_data_dump__application_repository_version }}"
+    shopify_mailchimp_campaigner_server_count_tags:
+      Name: shopify-mailchimp-campaigner
+      tier: crons
+      stack: mimameith
+      org: "{{ org | default('') }}"
+      env: "{{ stack_env }}"
+      version: "{{ shopify_mailchimp_campaigner__application_repository_version }}"
+    product_data_cache_updater_server_count_tags:
+      Name: product-data-cache-updater
+      tier: crons
+      stack: mimameith
+      org: "{{ org | default('') }}"
+      env: "{{ stack_env }}"
+      version: "{{ product_data_cache_updater__application_repository_version }}"
 
 
   tasks:
@@ -142,6 +156,52 @@
 
     # - debug: ec2_shopify_dump_cron_server
 
+    - name: Launch shopify-mailchimp-campaigner instance(s) in EC2
+      ec2:
+        wait: yes
+        image: "{{ shopify_mailchimp_campaigner_server_ami }}"
+        region: "{{ shopify_mailchimp_campaigner_server_region }}"
+        instance_type: "{{ shopify_mailchimp_campaigner_server_instance_type }}"
+        key_name: "{{ shopify_mailchimp_campaigner_server_key_name }}"
+        group:
+          - Internal
+          - default
+          - outbound-web
+        instance_tags: "{{ shopify_mailchimp_campaigner_server_count_tags }}"
+        exact_count: 1
+        count_tag: "{{ shopify_mailchimp_campaigner_server_count_tags }}"
+        monitoring: yes
+      register: ec2_shopify_mailchimp_campaigner_server
+
+    # - debug: ec2_shopify_mailchimp_campaigner_server
+
+    - name: Launch product-data-cache-updater instance(s) in EC2
+      ec2:
+        wait: yes
+        image: "{{ product_data_cache_updater_server_ami }}"
+        region: "{{ product_data_cache_updater_server_region }}"
+        instance_type: "{{ product_data_cache_updater_server_instance_type }}"
+        key_name: "{{ product_data_cache_updater_server_key_name }}"
+        group:
+          - Internal
+          - default
+          - EHDB access
+          - outbound-web
+        instance_tags: "{{ product_data_cache_updater_server_count_tags }}"
+        exact_count: 1
+        count_tag: "{{ product_data_cache_updater_server_count_tags }}"
+        monitoring: yes
+      register: ec2_product_data_cache_updater_server
+
+    # - debug: ec2_product_data_cache_updater_server
+
+
+    ###########################################################
+    # Setting some server facts and properties
+    # ========================================
+    #
+    ###########################################################
+
     # Adding instance names
     - name: Tagging app server instances with a Name
       ec2_tag:
@@ -181,7 +241,11 @@
 
     # - debug: var=ec2_load_balancer_eip_result
 
+    ###########################################################
     # Adding newly provisioned hosts to inventory
+    # =======================
+    #
+    ###########################################################
 
     - name: add db server host(s) to inventory
       add_host:
@@ -235,13 +299,33 @@
       with_items: "{{ ec2_shopify_dump_cron_server.tagged_instances }}"
       when: item.public_ip is defined
 
+    - name: add shopify mailchimp campaigner server to inventory
+      add_host:
+        hostname: "{{ item.public_ip }}"
+        ansible_user: ubuntu
+        ansible_ssh_private_key_file: "{{ shopify_mailchimp_campaigner_server_key_file }}"
+        groups:
+          - shopify_mailchimp_campaigner
+      with_items: "{{ ec2_shopify_mailchimp_campaigner_server.tagged_instances }}"
+      when: item.public_ip is defined
+
+    - name: add product_data_cache_updater server to inventory
+      add_host:
+        hostname: "{{ item.public_ip }}"
+        ansible_user: ubuntu
+        ansible_ssh_private_key_file: "{{ product_data_cache_updater_server_key_file }}"
+        groups:
+          - product_data_cache_updater
+      with_items: "{{ ec2_product_data_cache_updater_server.tagged_instances }}"
+      when: item.public_ip is defined
+
     # TODO: use wait_for_connection module instead of wait_for?
     - name: wait for newly added hosts to be ready for SSH connections
       wait_for:
         host: "{{ item.public_ip }}"
         port: 22
         search_regex: OpenSSH
-      with_items: "{{ ec2_db_servers.tagged_instances + ec2_app_servers.tagged_instances + [ ec2_load_balancer_eip_result ] + ec2_manifest_service.tagged_instances + ec2_shopify_dump_cron_server.tagged_instances }}"
+      with_items: "{{ ec2_db_servers.tagged_instances + ec2_app_servers.tagged_instances + [ ec2_load_balancer_eip_result ] + ec2_manifest_service.tagged_instances + ec2_shopify_dump_cron_server.tagged_instances + ec2_shopify_mailchimp_campaigner_server.tagged_instances + ec2_product_data_cache_updater_server.tagged_instances}}"
       when: item.public_ip is defined
 
     # - debug: var=hostvars
@@ -252,16 +336,16 @@
 #
 ###########################################################
 
-# - name: Mongo server playbook
-#   import_playbook: mongo-server.yml
-#   vars:
-#     mongodb_bind_ip: 127.0.0.1,{{ hostvars[ groups['control'][0] ].db_server_host }}
-#     mongo_server__skip_mongo_setup: "{{ not hostvars[ groups['control'][0] ].mongodb_server_deployed }}"
+- name: Mongo server playbook
+  import_playbook: mongo-server.yml
+  vars:
+    mongodb_bind_ip: 127.0.0.1,{{ hostvars[ groups['control'][0] ].db_server_host }}
+    mongo_server__skip_mongo_setup: "{{ not hostvars[ groups['control'][0] ].mongodb_server_deployed }}"
 
-# - name: Configure load balancer
-#   import_playbook: load-balancer.yml
-#   vars: 
-#     server_nodes: "{{ hostvars[ groups['control'][0] ].app_server_addr }}"
+- name: Configure load balancer
+  import_playbook: load-balancer.yml
+  vars: 
+    server_nodes: "{{ hostvars[ groups['control'][0] ].app_server_addr }}"
 
 - name: Application playbook
   import_playbook: app.yml
@@ -269,15 +353,24 @@
     db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
     manifest_service_location: "{{ hostvars[ groups['control'][0] ].manifest_service_host }}:{{ hostvars[ groups['manifest_service'][0] ].manifest_service__port }}"
 
-# - name: Manifest service playbook
-#   import_playbook: manifest-service.yml
-#   vars:
-#     expresshop_manifest_service__application_port: "{{ manifest_service__port }}"
+- name: Manifest service playbook
+  import_playbook: manifest-service.yml
+  vars:
+    expresshop_manifest_service__application_port: "{{ manifest_service__port }}"
 
-# - name: Shopify data dump cron server
-#   import_playbook: shopify-dump-cron-server.yml
-#   vars:
-#     db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+- name: Shopify data dump cron server
+  import_playbook: shopify-dump-cron-server.yml
+  vars:
+    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+
+- name: Shopify mailchimp campaigner server
+  import_playbook: shopify-mailchimp-campaigner-server.yml
+
+- name: Product data cache updater server
+  import_playbook: product-data-cache-updater-server.yml
+  vars:
+    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+
 
 ###########################################################
 # Set update crons
