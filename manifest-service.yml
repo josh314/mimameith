@@ -3,6 +3,7 @@
 
   vars:
     expresshop_manifest_service__remote_deploy_key_file: /home/{{ ansible_user }}/.ssh/id_ed25519
+    expresshop_manifest_service__application_repository_version: master
     application_path: "{{ ansible_env.HOME }}/expresshop-manifest-service"
 
   tasks:
@@ -19,7 +20,13 @@
         name: geerlingguy.nodejs
       become: yes
       vars:
-        nodejs_version: "12.x"
+        nodejs_version: "18.x"
+
+    - name: Stop app if already running. Ignore error caused by app not running yet 
+      command: pm2 stop process.json
+      args:
+        chdir: "{{ application_path }}"
+      ignore_errors: yes
 
     - import_role: 
         name: expresshop_manifest_service

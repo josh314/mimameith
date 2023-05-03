@@ -33,6 +33,7 @@
       stack: mimameith
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
+      version: "{{ expresshop_manifest_service__application_repository_version }}"
     shopify_dump_cron_server_count_tags:
       Name: shopify-dump-cron
       tier: crons

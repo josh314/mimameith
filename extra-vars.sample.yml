@@ -1,0 +1,15 @@
+# Replace the values below ith real values and move to `extra-vars.yml`
+
+lot_commander__application_repository_version: xxx
+
+shopify_data_dump__application_repository_version: xxx
+shopify_data_dump__script_args__debug: xxx
+shopify_data_dump__script_args__poll_results_interval_minutes: xxx
+shopify_data_dump__script_args__wait_cycle_interval_minutes: xxx
+shopify_data_dump__script_args__order_update_batch_size: xxx
+
+shopify_mailchimp_campaigner__application_repository_version: xxx
+
+product_data_cache_updater__application_repository_version: xxx
+
+expresshop_manifest_service__application_repository_version: xxx

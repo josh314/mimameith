@@ -3,7 +3,7 @@
   vars_files:
     - secrets.yml
   vars:
-    product_data_cache_updater__application_repository_version: production
+    product_data_cache_updater__application_repository_version: master
     path: "{{ ansible_env.HOME }}/product-data-cache-updater"
 
   # TODO? use HTTP2
@@ -40,6 +40,8 @@
         db_product_data_cache_updater_user: "{{ db.auth.product_data_cache_updater.user }}"
         db_product_data_cache_updater_password: "{{ db.auth.product_data_cache_updater.password }}"
         upcitemdb_user_key: "{{ upcitemdb.user_key }}"
+        product_data_cache_updater__sendgrid_api_key: "{{ sendgrid.api_keys.product_data_cache_updater }}"
+        product_data_cache_updater__contact_email: "{{ maintenance_contact_email }}"
 
     - import_role:
         name: pm2_app_service

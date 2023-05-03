@@ -40,6 +40,8 @@
         db_shopify_data_dump_user: "{{ db.auth.shopify_data_dump.user }}"
         db_shopify_data_dump_password: "{{ db.auth.shopify_data_dump.password }}"
         shopify_credentials: "{{ shopify.apps.shopify_data_dump }}"
+        shopify_data_dump__sendgrid_api_key: "{{ sendgrid.api_keys.shopify_data_dump }}"
+        shopify_data_dump__contact_email: "{{ maintenance_contact_email }}"
 
     - import_role:
         name: pm2_app_service
