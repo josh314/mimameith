@@ -41,7 +41,6 @@ app_server_key_name: josh-key-pair-useast
 app_server_key_file: ~/.ssh/josh-key-pair-useast.pem
 num_app_servers: 1
 
-
 # AWS instance settings for the manifest service instances
 manifest_service_ami: ami-09e67e426f25ce0d7 # ubuntu 20.4 LTS
 manifest_service_instance_type: t2.nano

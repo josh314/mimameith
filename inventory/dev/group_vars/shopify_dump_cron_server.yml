@@ -1,0 +1,12 @@
+---
+
+####################################################
+# Shopify dump cron server
+# ========================
+#
+# These variables are for the shopify dump cron server
+#
+############################################################
+
+shopify_store: wholesale_ninjas
+
