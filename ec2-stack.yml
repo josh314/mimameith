@@ -5,28 +5,55 @@
 #
 ###########################################################
 
+
+
 - name: Provision AWS resources
   hosts: control
   gather_facts: no
   vars:
+
     app_server_count_tags:
       tier: app_server
       stack: lot-commander
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
       version: "{{ lot_commander__application_repository_version }}"
+    app_server_instance_filter:
+      instance-state-name: running
+      tag:tier: app_server
+      tag:stack: lot-commander
+      tag:org: "{{ org | default('') }}"
+      tag:env: "{{ stack_env }}"
+      tag:version: "{{ lot_commander__application_repository_version }}"
+
     load_balancer_count_tags:
       Name: lot-commander_lb
       tier: load_balancer
       stack: lot-commander
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
+    load_balancer_instance_filter:
+      instance-state-name: running
+      tag:Name: lot-commander_lb
+      tag:tier: load_balancer
+      tag:stack: lot-commander
+      tag:org: "{{ org | default('') }}"
+      tag:env: "{{ stack_env }}"
+
     db_server_count_tags:
       Name: mongodb-server
       tier: database
       stack: lot-commander
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
+    db_server_instance_filter:
+      instance-state-name: running
+      tag:Name: mongodb-server
+      tag:tier: database
+      tag:stack: lot-commander
+      tag:org: "{{ org | default('') }}"
+      tag:env: "{{ stack_env }}"
+
     manifest_service_count_tags:
       Name: manifest-svc
       tier: service
@@ -34,13 +61,31 @@
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
       version: "{{ expresshop_manifest_service__application_repository_version }}"
-    shopify_dump_cron_server_count_tags:
-      Name: shopify-dump-cron
-      tier: crons
+    manifest_service_instance_filter:
+      instance-state-name: running
+      tag:Name: manifest-svc
+      tag:tier: service
+      tag:stack: mimameith
+      tag:org: "{{ org | default('') }}"
+      tag:env: "{{ stack_env }}"
+      tag:version: "{{ expresshop_manifest_service__application_repository_version }}"
+
+    shopify_data_dump_server_count_tags:
+      Name: shopify-data-dump
+      tier: database
       stack: mimameith
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
       version: "{{ shopify_data_dump__application_repository_version }}"
+    shopify_data_dump_server_instance_filter:
+      instance-state-name: running
+      tag:Name: shopify-data-dump
+      tag:tier: database
+      tag:stack: mimameith
+      tag:org: "{{ org | default('') }}"
+      tag:env: "{{ stack_env }}"
+      tag:version: "{{ shopify_data_dump__application_repository_version }}"
+
     shopify_mailchimp_campaigner_server_count_tags:
       Name: shopify-mailchimp-campaigner
       tier: crons
@@ -48,215 +93,393 @@
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
       version: "{{ shopify_mailchimp_campaigner__application_repository_version }}"
+    shopify_mailchimp_campaigner_server_instance_filter:
+      instance-state-name: running
+      tag:Name: shopify-mailchimp-campaigner
+      tag:tier: crons
+      tag:stack: mimameith
+      tag:org: "{{ org | default('') }}"
+      tag:env: "{{ stack_env }}"
+      tag:version: "{{ shopify_mailchimp_campaigner__application_repository_version }}"
+
     product_data_cache_updater_server_count_tags:
       Name: product-data-cache-updater
-      tier: crons
+      tier: database
       stack: mimameith
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
       version: "{{ product_data_cache_updater__application_repository_version }}"
-
+    product_data_cache_updater_server_instance_filter:
+      instance-state-name: running
+      tag:Name: product-data-cache-updater
+      tag:tier: database
+      tag:stack: mimameith
+      tag:org: "{{ org | default('') }}"
+      tag:env: "{{ stack_env }}"
+      tag:version: "{{ product_data_cache_updater__application_repository_version }}"
 
   tasks:
 
-    - name: Launch the Database instance in EC2
-      ec2:
-        wait: yes
-        image: "{{ db_server_ami }}"
+  #####################################################################################
+  # EC2 provisioning and configuration
+  # ==================================
+  #
+  #####################################################################################
+
+
+    - name: Provision the Database instance in EC2
+      amazon.aws.ec2_instance:
+        state: running
+        image:
+          id: "{{ db_server_ami }}"
         region: "{{ db_server_region }}"
         instance_type: "{{ db_server_instance_type }}"
         key_name: "{{ db_server_key_name }}"
-        group:
-          - Internal
-          - default
-          - EHDB
-        instance_tags: "{{ db_server_count_tags }}"
+        security_groups:
+          - sg-052e5c37ecfa0cd7b # Internal
+          - sg-ef6fc897 # default (old)
+          - sg-0d2b2f3d26d6fefdc # EHDB
+        tags: "{{ db_server_count_tags }}"
+        filters: "{{ db_server_instance_filter }}"
         exact_count: "{{ num_db_servers }}"
-        count_tag: "{{ db_server_count_tags }}"
-        monitoring: yes
-      register: ec2_db_servers
+        detailed_monitoring: "{{ stack_env == 'prod' }}"
+      register: ec2_db_server_ec2_instance_result
+      when: provision__db_server
 
-    # - debug: var=ec2_db_servers
 
-    - name: Launch the load balancer instance in EC2
-      ec2:
-        wait: yes
-        image: "{{ load_balancer_ami }}"
+    - name: Provision the load balancer instance in EC2
+      amazon.aws.ec2_instance:
+        state: running
+        image:
+          id: "{{ load_balancer_ami }}"
         region: "{{ load_balancer_region }}"
         instance_type: "{{ load_balancer_instance_type }}"
         key_name: "{{ load_balancer_key_name }}"
-        group:
-          - Internal
-          - default
-          - "lot_commander::load_balancer"
-          - public web server
-        instance_tags: "{{ load_balancer_count_tags }}"
+        security_groups:
+          - sg-052e5c37ecfa0cd7b # Internal
+          - sg-ef6fc897 # default (old)
+          - sg-0354ff7a734f377c3 # lot_commander::load_balancer
+          - sg-3fe45677 # public web server
+        tags: "{{ load_balancer_count_tags }}"
+        filters: "{{ load_balancer_instance_filter }}"
         exact_count: 1
-        count_tag: "{{ load_balancer_count_tags }}"
-        monitoring: yes
-      register: ec2_load_balancer
+        detailed_monitoring: "{{ stack_env == 'prod' }}"
+      register: ec2_load_balancer_ec2_instance_result
+      when: provision__load_balancer
 
-    # - debug: var=ec2_load_balancer
 
-    - name: Launch the manifest service instance(s) in EC2
-      ec2:
-        wait: yes
-        image: "{{ manifest_service_ami }}"
+    - name: Provision the manifest service instance(s) in EC2
+      amazon.aws.ec2_instance:
+        state: running
+        image:
+          id: "{{ manifest_service_ami }}"
         region: "{{ manifest_service_region }}"
         instance_type: "{{ manifest_service_instance_type }}"
         key_name: "{{ manifest_service_key_name }}"
-        group:
-          - Internal
-          - default
-          - "expresshop_service::manifest"
-        instance_tags: "{{ manifest_service_count_tags }}"
-        exact_count: "{{ num_manifest_service }}"
-        count_tag: "{{ manifest_service_count_tags }}"
-        monitoring: yes
-      register: ec2_manifest_service
+        security_groups:
+          - sg-052e5c37ecfa0cd7b # Internal
+          - sg-ef6fc897 # default (old)
+          - sg-07008ab6c9c5dd60b # expresshop_service::manifest
+        tags: "{{ manifest_service_count_tags }}"
+        filters: "{{ manifest_service_instance_filter }}"
+        exact_count: 1
+        detailed_monitoring: "{{ stack_env == 'prod' }}"
+      register: ec2_manifest_service_ec2_instance_result
+      when: provision__manifest_service
 
-    # - debug: var=ec2_manifest_service
 
-    - name: Launch lot-commander application instance(s) in EC2
-      ec2:
-        wait: yes
-        image: "{{ app_server_ami }}"
+    - name: Provision the application instance(s) in EC2
+      amazon.aws.ec2_instance:
+        state: running
+        image:
+          id: "{{ app_server_ami }}"
         region: "{{ app_server_region }}"
         instance_type: "{{ app_server_instance_type }}"
         key_name: "{{ app_server_key_name }}"
-        group:
-          - Internal
-          - default
-          - EHDB access
-          - "lot_commander::app_server"
-        instance_tags: "{{ app_server_count_tags }}"
-        exact_count: "{{ num_app_servers }}"
-        count_tag: "{{ app_server_count_tags }}"
-        monitoring: yes
-      register: ec2_app_servers
-
-    # - debug: var=ec2_app_servers
-
-    - name: Launch shopify-dump-cron instance(s) in EC2
-      ec2:
-        wait: yes
-        image: "{{ shopify_dump_cron_server_ami }}"
-        region: "{{ shopify_dump_cron_server_region }}"
-        instance_type: "{{ shopify_dump_cron_server_instance_type }}"
-        key_name: "{{ shopify_dump_cron_server_key_name }}"
-        group:
-          - Internal
-          - default
-          - EHDB access
-          - outbound-web
-        instance_tags: "{{ shopify_dump_cron_server_count_tags }}"
+        security_groups:
+          - sg-052e5c37ecfa0cd7b # Internal
+          - sg-ef6fc897 # default (old)
+          - sg-0d79155d77efa9078 # EHDB access
+          - sg-091a4954b4f624c04 # lot_commander::app_server
+        tags: "{{ app_server_count_tags }}"
+        filters: "{{ app_server_instance_filter }}"
         exact_count: 1
-        count_tag: "{{ shopify_dump_cron_server_count_tags }}"
-        monitoring: yes
-      register: ec2_shopify_dump_cron_server
+        detailed_monitoring: "{{ stack_env == 'prod' }}"
+      register: ec2_app_server_ec2_instance_result
+      when: provision__app_servers
 
-    # - debug: ec2_shopify_dump_cron_server
 
-    - name: Launch shopify-mailchimp-campaigner instance(s) in EC2
-      ec2:
-        wait: yes
-        image: "{{ shopify_mailchimp_campaigner_server_ami }}"
-        region: "{{ shopify_mailchimp_campaigner_server_region }}"
-        instance_type: "{{ shopify_mailchimp_campaigner_server_instance_type }}"
-        key_name: "{{ shopify_mailchimp_campaigner_server_key_name }}"
-        group:
-          - Internal
-          - default
-          - outbound-web
-        instance_tags: "{{ shopify_mailchimp_campaigner_server_count_tags }}"
+    - name: Provision the shopify-data-dump instance in EC2
+      amazon.aws.ec2_instance:
+        state: running
+        image:
+          id: "{{ shopify_data_dump_server_ami }}"
+        region: "{{ shopify_data_dump_server_region }}"
+        instance_type: "{{ shopify_data_dump_server_instance_type }}"
+        key_name: "{{ shopify_data_dump_server_key_name }}"
+        security_groups:
+          - sg-052e5c37ecfa0cd7b # Internal
+          - sg-ef6fc897 # default (old)
+          - sg-0d79155d77efa9078 # EHDB access
+          - sg-04a9528a6686b9905 # outbound web
+        tags: "{{ shopify_data_dump_server_count_tags }}"
+        filters: "{{ shopify_data_dump_server_instance_filter }}"
         exact_count: 1
-        count_tag: "{{ shopify_mailchimp_campaigner_server_count_tags }}"
-        monitoring: yes
-      register: ec2_shopify_mailchimp_campaigner_server
+        detailed_monitoring: "{{ stack_env == 'prod' }}"
+      register: ec2_shopify_data_dump_server_ec2_instance_result
+      when: provision__shopify_data_dump
 
-    # - debug: ec2_shopify_mailchimp_campaigner_server
-
-    - name: Launch product-data-cache-updater instance(s) in EC2
-      ec2:
-        wait: yes
-        image: "{{ product_data_cache_updater_server_ami }}"
+    - name: Provision the product-data-cache-updater instance in EC2
+      amazon.aws.ec2_instance:
+        state: running
+        image:
+          id: "{{ product_data_cache_updater_server_ami }}"
         region: "{{ product_data_cache_updater_server_region }}"
         instance_type: "{{ product_data_cache_updater_server_instance_type }}"
         key_name: "{{ product_data_cache_updater_server_key_name }}"
-        group:
-          - Internal
-          - default
-          - EHDB access
-          - outbound-web
-        instance_tags: "{{ product_data_cache_updater_server_count_tags }}"
+        security_groups:
+          - sg-052e5c37ecfa0cd7b # Internal
+          - sg-ef6fc897 # default (old)
+          - sg-0d79155d77efa9078 # EHDB access
+          - sg-04a9528a6686b9905 # outbound web
+        tags: "{{ product_data_cache_updater_server_count_tags }}"
+        filters: "{{ product_data_cache_updater_server_instance_filter }}"
         exact_count: 1
-        count_tag: "{{ product_data_cache_updater_server_count_tags }}"
-        monitoring: yes
-      register: ec2_product_data_cache_updater_server
+        detailed_monitoring: "{{ stack_env == 'prod' }}"
+      register: ec2_product_data_cache_updater_server_ec2_instance_result
+      when: provision__product_data_cache_updater
 
-    # - debug: ec2_product_data_cache_updater_server
+    #################################################################################################
+    ## Collect necessary instance information not returned by the provisioning tasks
+    ##
+    ## These tasks are run when the corresponding resourse has been set for provisioning but the
+    ## requisite info was not returned from the provisioning task above
+
+    - name: Get database instance info (if not returned by the provisioning task)
+      amazon.aws.ec2_instance_info:
+        filters: "{{ db_server_instance_filter }}"
+      register: ec2_db_server_ec2_info_result
+      when: ec2_db_server_ec2_instance_result.instances is not defined or ec2_db_server_ec2_instance_result.instances[0] is not defined
+
+    - name: Get load balancer instance info (if not returned by the provisioning task)
+      amazon.aws.ec2_instance_info:
+        filters: "{{ load_balancer_instance_filter }}"
+      register: ec2_load_balancer_ec2_info_result
+      when: ec2_load_balancer_ec2_instance_result.instances is not defined or ec2_load_balancer_ec2_instance_result.instances[0] is not defined
+
+    - name: Get manifest service instance info (if not returned by the provisioning task)
+      amazon.aws.ec2_instance_info:
+        filters: "{{ manifest_service_instance_filter }}"
+      register: ec2_manifest_service_ec2_info_result
+      when: ec2_manifest_service_ec2_instance_result.instances is not defined or ec2_manifest_service_ec2_instance_result.instances[0] is not defined
+
+    - name: Get application server instance info (if not returned by the provisioning task)
+      amazon.aws.ec2_instance_info:
+        filters: "{{ app_server_instance_filter }}"
+      register: ec2_app_server_ec2_info_result
+      when: ec2_app_server_ec2_instance_result.instances is not defined or ec2_app_server_ec2_instance_result.instances[0] is not defined
+
+    - name: Get shopify data dump server instance info (if not returned by the provisioning task)
+      amazon.aws.ec2_instance_info:
+        filters: "{{ shopify_data_dump_server_instance_filter }}"
+      register: ec2_shopify_data_dump_server_ec2_info_result
+      when: ec2_shopify_data_dump_server_ec2_instance_result.instances is not defined or ec2_shopify_data_dump_server_ec2_instance_result.instances[0] is not defined
+
+    - name: Get product data cache updater server instance info (if not returned by the provisioning task)
+      amazon.aws.ec2_instance_info:
+        filters: "{{ product_data_cache_updater_server_instance_filter }}"
+      register: ec2_product_data_cache_updater_server_ec2_info_result
+      when: ec2_product_data_cache_updater_server_ec2_instance_result.instances is not defined or ec2_product_data_cache_updater_server_ec2_instance_result.instances[0] is not defined
 
 
-    ###########################################################
-    # Setting some server facts and properties
-    # ========================================
-    #
-    ###########################################################
+    #################################################################################################
+    ## Setting facts for later use (some tasks are doubled because the relevant info doesn't seem to be reliably output from a single task above)
 
-    # Adding instance names
-    - name: Tagging app server instances with a Name
-      ec2_tag:
-        resource: "{{ app_server.id }}"
-        tags:
-          Name: "lot-commander_{{idx}}"
-      loop: "{{ ec2_app_servers.tagged_instances }}"
-      loop_control:
-        loop_var: app_server
-        index_var: idx
-        label: "{{ app_server.id }}"
-      when: app_server.tags.Name is not defined
+    # database facts
 
-    # Setting these facts here since registered variables will not be available in the later playbooks
     - name: "Setting fact: mongodb_server_deployed"
       set_fact:
-        mongodb_server_deployed: '{{ ec2_db_servers.changed }}'
+        mongodb_server_deployed: '{{ ec2_db_server_ec2_instance_result is defined and ec2_db_server_ec2_instance_result.changed }}'
 
-    - name: "Setting fact: app_server_addr"
+    - name: "Setting fact: db_server_instances (from ec2_instance result)"
       set_fact:
-        app_server_addr: '{{ ec2_app_servers.tagged_instances | map(attribute="private_ip") | map("regex_replace", "^(.*)$", "\1:80") | list }}'
+        db_server_instances: '{{ ec2_db_server_ec2_instance_result.instances }}'
+      when: ec2_db_server_ec2_instance_result.instances is defined and ec2_db_server_ec2_instance_result.instances[0] is defined
+
+    - name: "Setting fact: db_server_instances (from ec2_info result)"
+      set_fact:
+        db_server_instances: '{{ ec2_db_server_ec2_info_result.instances }}'
+      when: ec2_db_server_ec2_info_result.instances is defined and ec2_db_server_ec2_info_result.instances[0] is defined
 
     - name: "Setting fact: db_server_host"
       set_fact:
-        db_server_host: '{{ ec2_db_servers.tagged_instances[0].private_ip }}'
+        db_server_host: '{{ db_server_instances[0].private_ip_address }}'
+      when: db_server_instances is defined and db_server_instances[0] is defined
+
+
+    # load balancer facts
+
+    - name: "Setting fact: load_balancer_instance_id (from ec2_instance result)"
+      set_fact:
+        load_balancer_instance_id: '{{ ec2_load_balancer_ec2_instance_result.instances[0].instance_id }}'
+      when: ec2_load_balancer_ec2_instance_result.instances is defined and ec2_load_balancer_ec2_instance_result.instances[0] is defined
+
+    - name: "Setting fact: load_balancer_instances (from ec2_info result)"
+      set_fact:
+        load_balancer_instances: '{{ ec2_load_balancer_ec2_info_result.instances }}'
+      when: ec2_load_balancer_ec2_info_result.instances is defined and ec2_load_balancer_ec2_info_result.instances[0] is defined
+
+    - name: "Setting fact: load_balancer_instance_id"
+      set_fact:
+        load_balancer_instance_id: '{{ load_balancer_instances[0].instance_id }}'
+      when: load_balancer_instances is defined and load_balancer_instances[0] is defined
+
+    # manifest service facts
+
+    - name: "Setting fact: manifest_service_instances (from ec2_instance result)"
+      set_fact:
+        manifest_service_instances: '{{ ec2_manifest_service_ec2_instance_result.instances }}'
+      when: ec2_manifest_service_ec2_instance_result.instances is defined and ec2_manifest_service_ec2_instance_result.instances[0] is defined
+
+    - name: "Setting fact: manifest_service_instances (from ec2_info result)"
+      set_fact:
+        manifest_service_instances: '{{ ec2_manifest_service_ec2_info_result.instances }}'
+      when: ec2_manifest_service_ec2_info_result.instances is defined and ec2_manifest_service_ec2_info_result.instances[0] is defined
+
 
     - name: "Setting fact: manifest_service_host"
       set_fact:
-        manifest_service_host: '{{ ec2_manifest_service.tagged_instances[0].private_ip }}'
+        manifest_service_host: '{{ manifest_service_instances[0].private_ip_address }}'
+      when: manifest_service_instances is defined and manifest_service_instances[0] is defined
+
+    # app server facts
+
+    - name: "Setting fact: app_server_instances (from ec2_instance result)"
+      set_fact:
+        app_server_instances: '{{ ec2_app_server_ec2_instance_result.instances }}'
+      when: ec2_app_server_ec2_instance_result.instances is defined and ec2_app_server_ec2_instance_result.instances[0] is defined
+
+    - name: "Setting fact: app_server_instances (from ec2_info result)"
+      set_fact:
+        app_server_instances: '{{ ec2_app_server_ec2_info_result.instances }}'
+      when: ec2_app_server_ec2_info_result.instances is defined and ec2_app_server_ec2_info_result.instances[0] is defined
+
+    - name: "Setting fact: app_server_addresses"
+      set_fact:
+        app_server_addresses: '{{ app_server_instances | map(attribute="private_ip_address") | map("regex_replace", "^(.*)$", "\1:80") | list }}'
+      when: app_server_instances is defined and app_server_instances[0] is defined
+
+    # shopify data dump facts
+
+    - name: "Setting fact: shopify_data_dump_server_instances (from ec2_instance result)"
+      set_fact:
+        shopify_data_dump_server_instances: '{{ ec2_shopify_data_dump_server_ec2_instance_result.instances }}'
+      when: ec2_shopify_data_dump_server_ec2_instance_result.instances is defined and ec2_shopify_data_dump_server_ec2_instance_result.instances[0] is defined
+
+    - name: "Setting fact: shopify_data_dump_server_instances (from ec2_info result)"
+      set_fact:
+        shopify_data_dump_server_instances: '{{ ec2_shopify_data_dump_server_ec2_info_result.instances }}'
+      when: ec2_shopify_data_dump_server_ec2_info_result.instances is defined and ec2_shopify_data_dump_server_ec2_info_result.instances[0] is defined
+
+    # product data cache updater facts
+
+    - name: "Setting fact: product_data_cache_updater_server_instances (from ec2_instance result)"
+      set_fact:
+        product_data_cache_updater_server_instances: '{{ ec2_product_data_cache_updater_server_ec2_instance_result.instances }}'
+      when: ec2_product_data_cache_updater_server_ec2_instance_result.instances is defined and ec2_product_data_cache_updater_server_ec2_instance_result.instances[0] is defined
+
+    - name: "Setting fact: product_data_cache_updater_server_instances (from ec2_info result)"
+      set_fact:
+        product_data_cache_updater_server_instances: '{{ ec2_product_data_cache_updater_server_ec2_info_result.instances }}'
+      when: ec2_product_data_cache_updater_server_ec2_info_result.instances is defined and ec2_product_data_cache_updater_server_ec2_info_result.instances[0] is defined
+
+
+    #################################################################################################
+    ## Wait for servers to be available
+
+    - name: Initialize empty wait list
+      set_fact:
+        wait_list: []
+
+    - name: Add db to wait list
+      set_fact:
+        wait_list: "{{ wait_list + db_server_instances }}"
+      when: db_server_instances is defined
+
+    - name: Add app servers to wait list
+      set_fact:
+        wait_list: "{{ wait_list + load_balancer_instances }}"
+      when: load_balancer_instances is defined
+
+    - name: Add app servers to wait list
+      set_fact:
+        wait_list: "{{ wait_list + app_server_instances }}"
+      when: app_server_instances is defined
+
+    - name: Add manifest service to wait list
+      set_fact:
+        wait_list: "{{ wait_list + manifest_service_instances }}"
+      when: manifest_service_instances is defined
+
+    - name: Add shopify data dump server to wait list
+      set_fact:
+        wait_list: "{{ wait_list + shopify_data_dump_server_instances }}"
+      when: shopify_data_dump_server_instances is defined
+
+    - name: Add product data cache updater to wait list
+      set_fact:
+        wait_list: "{{ wait_list + product_data_cache_updater_server_instances }}"
+      when: product_data_cache_updater_server_instances is defined
+
+    - name: Wait for connections to wait list hosts
+      wait_for:
+        host: "{{ item.public_ip_address }}"
+        port: 22
+        search_regex: OpenSSH
+      loop: "{{ wait_list }}"
+      loop_control:
+        loop_var: item
+        index_var: idx
+        label: "{{ item.tags.Name if items.tags.Name is defined else item.tags.tier }}"
+
+
+    #################################################################################################
+    ## EC2 level configuration
+
+    - name: Tagging app server instances with a iterated Name tag
+      amazon.aws.ec2_tag:
+        resource: "{{ app_server.instance_id }}"
+        tags:
+          Name: "lot-commander_{{idx}}"
+      loop: "{{ app_server_instances }}"
+      loop_control:
+        loop_var: app_server
+        index_var: idx
+        label: "{{ app_server.instance_id }}"
+      when: app_server_instances is defined and app_server.tags.Name is not defined
 
     - name: Associate Elastic IP with load balancer
-      ec2_eip:
-        device_id: "{{ ec2_load_balancer.tagged_instances[0].id }}"
+      community.aws.ec2_eip:
+        device_id: "{{ load_balancer_instance_id }}"
         ip: "{{ load_balancer_eip }}"
-        region: "{{ ec2_load_balancer.tagged_instances[0].region }}"
       register: ec2_load_balancer_eip_result
+      when: load_balancer_instance_id is defined and load_balancer_instance_id != load_balancer_eip
 
-    # - debug: var=ec2_load_balancer_eip_result
-
-    ###########################################################
-    # Adding newly provisioned hosts to inventory
-    # =======================
-    #
-    ###########################################################
+#     #################################################################################################
+#     ## Adding newly provisioned hosts to inventory
 
     - name: add db server host(s) to inventory
       add_host:
-        hostname: "{{ item.public_ip }}"
+        hostname: "{{ server.public_ip_address }}"
         ansible_user: ubuntu
         ansible_ssh_private_key_file: "{{ db_server_key_file }}"
         groups:
           - mongo_servers
-      with_items: "{{ ec2_db_servers.tagged_instances }}"
-      when: item.public_ip is defined
+      loop: "{{ db_server_instances }}"
+      loop_control:
+        loop_var: server
+        label: "instance: {{ server.instance_id }}, public_dns: {{ server.public_dns_name }}, public_ip: {{ server.public_ip_address }}"
+      when: db_server_instances is defined and server.public_ip_address is defined
 
     - name: add load balancer host elastic IP to inventory
       add_host:
@@ -269,71 +492,60 @@
 
     - name: add app server host(s) to inventory
       add_host:
-        hostname: "{{ app_server.public_ip }}"
+        hostname: "{{ app_server.public_ip_address }}"
         ansible_user: ubuntu
         ansible_ssh_private_key_file: "{{ app_server_key_file }}"
         groups:
           - app_servers
-      loop: "{{ ec2_app_servers.tagged_instances }}"
+      loop: "{{ app_server_instances }}"
       loop_control:
         loop_var: app_server
-        label: "instance: {{ app_server.id }}, public_dns: {{ app_server.public_dns_name }}"
-      when: app_server.public_ip is defined
+        label: "instance: {{ app_server.instance_id }}, public_dns: {{ app_server.public_dns_name }}, public_ip: {{ app_server.public_ip_address }}"
+      when: app_server_instances is defined and app_server.public_ip_address is defined
 
     - name: add manifest service host(s) to inventory
       add_host:
-        hostname: "{{ item.public_ip }}"
+        hostname: "{{ server.public_ip_address }}"
         ansible_user: ubuntu
         ansible_ssh_private_key_file: "{{ manifest_service_key_file }}"
         groups:
           - manifest_service
-      with_items: "{{ ec2_manifest_service.tagged_instances }}"
-      when: item.public_ip is defined
+      loop: "{{ manifest_service_instances }}"
+      loop_control:
+        loop_var: server
+        label: "instance: {{ server.instance_id }}, public_dns: {{ server.public_dns_name }}, public_ip: {{ server.public_ip_address }}"
+      when: manifest_service_instances is defined and server.public_ip_address is defined
 
-    - name: add shopify dump cron server to inventory
+    - name: add shopify data dump server host(s) to inventory
       add_host:
-        hostname: "{{ item.public_ip }}"
+        hostname: "{{ server.public_ip_address }}"
         ansible_user: ubuntu
-        ansible_ssh_private_key_file: "{{ shopify_dump_cron_server_key_file }}"
+        ansible_ssh_private_key_file: "{{ shopify_data_dump_server_key_file }}"
         groups:
-          - shopify_dump_cron
-      with_items: "{{ ec2_shopify_dump_cron_server.tagged_instances }}"
-      when: item.public_ip is defined
+          - shopify_data_dump
+      loop: "{{ shopify_data_dump_server_instances }}"
+      loop_control:
+        loop_var: server
+        label: "instance: {{ server.instance_id }}, public_dns: {{ server.public_dns_name }}, public_ip: {{ server.public_ip_address }}"
+      when: shopify_data_dump_server_instances is defined and server.public_ip_address is defined
 
-    - name: add shopify mailchimp campaigner server to inventory
+    - name: add product data cache updater server host(s) to inventory
       add_host:
-        hostname: "{{ item.public_ip }}"
+        hostname: "{{ server.public_ip_address }}"
         ansible_user: ubuntu
-        ansible_ssh_private_key_file: "{{ shopify_mailchimp_campaigner_server_key_file }}"
-        groups:
-          - shopify_mailchimp_campaigner
-      with_items: "{{ ec2_shopify_mailchimp_campaigner_server.tagged_instances }}"
-      when: item.public_ip is defined
-
-    - name: add product_data_cache_updater server to inventory
-      add_host:
-        hostname: "{{ item.public_ip }}"
-        ansible_user: ubuntu
-        ansible_ssh_private_key_file: "{{ product_data_cache_updater_server_key_file }}"
+        ansible_ssh_private_key_file: "{{ shopify_data_dump_server_key_file }}"
         groups:
           - product_data_cache_updater
-      with_items: "{{ ec2_product_data_cache_updater_server.tagged_instances }}"
-      when: item.public_ip is defined
+      loop: "{{ product_data_cache_updater_server_instances }}"
+      loop_control:
+        loop_var: server
+        label: "instance: {{ server.instance_id }}, public_dns: {{ server.public_dns_name }}, public_ip: {{ server.public_ip_address }}"
+      when: product_data_cache_updater_server_instances is defined and server.public_ip_address is defined
 
-    # TODO: use wait_for_connection module instead of wait_for?
-    - name: wait for newly added hosts to be ready for SSH connections
-      wait_for:
-        host: "{{ item.public_ip }}"
-        port: 22
-        search_regex: OpenSSH
-      with_items: "{{ ec2_db_servers.tagged_instances + ec2_app_servers.tagged_instances + [ ec2_load_balancer_eip_result ] + ec2_manifest_service.tagged_instances + ec2_shopify_dump_cron_server.tagged_instances + ec2_shopify_mailchimp_campaigner_server.tagged_instances + ec2_product_data_cache_updater_server.tagged_instances}}"
-      when: item.public_ip is defined
-
-    # - debug: var=hostvars
 
 ###########################################################
-# Configure provisioned resources
-# ===============================
+# Configure provisioned resources with server playbooks
+# =====================================================
 #
 ###########################################################
 
@@ -342,35 +554,38 @@
   vars:
     mongodb_bind_ip: 127.0.0.1,{{ hostvars[ groups['control'][0] ].db_server_host }}
     mongo_server__skip_mongo_setup: "{{ not hostvars[ groups['control'][0] ].mongodb_server_deployed }}"
+  when: configure__db_server
 
 - name: Configure load balancer
   import_playbook: load-balancer.yml
-  vars: 
-    server_nodes: "{{ hostvars[ groups['control'][0] ].app_server_addr }}"
+  vars:
+    server_nodes: "{{ hostvars[ groups['control'][0] ].app_server_addresses }}"
+  when: configure__load_balancer
 
-- name: Application playbook
+- name: Application server(s) playbook
   import_playbook: app.yml
   vars:
     db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
     manifest_service_location: "{{ hostvars[ groups['control'][0] ].manifest_service_host }}:{{ hostvars[ groups['manifest_service'][0] ].manifest_service__port }}"
+  when: configure__app_servers
 
 - name: Manifest service playbook
   import_playbook: manifest-service.yml
   vars:
     expresshop_manifest_service__application_port: "{{ manifest_service__port }}"
+  when: configure__manifest_service
 
-- name: Shopify data dump cron server
-  import_playbook: shopify-dump-cron-server.yml
-  vars:
-    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
-
-- name: Shopify mailchimp campaigner server
-  import_playbook: shopify-mailchimp-campaigner-server.yml
+# - name: Shopify data dump server
+#   import_playbook: shopify-data-dump-server.yml
+#   vars:
+#     db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+#   when: configure__shopify_data_dump
 
 - name: Product data cache updater server
   import_playbook: product-data-cache-updater-server.yml
   vars:
     db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+  when: configure__product_data_cache_updater
 
 
 ###########################################################
@@ -378,40 +593,3 @@
 # ================
 # Set at staggered intervals so reboots happen in correct order
 ###########################################################
-
-- name: Set update cron (database)
-  hosts: mongo_servers
-  tasks:
-    - import_role:
-        name: auto_upgrade_cron
-      vars:
-        auto_upgrade_cron_hour: '8' # 3AM in EST
-        auto_upgrade_cron_minute: '0'
-
-- name: Set update cron (app servers)
-  hosts: app_servers
-  tasks:
-    - import_role:
-        name: auto_upgrade_cron
-      vars:
-        auto_upgrade_cron_hour: '8' # 3AM in EST
-        auto_upgrade_cron_minute: '30'
-
-- name: Set update cron (load balancer)
-  hosts: load_balancer
-  tasks:
-    - import_role:
-        name: auto_upgrade_cron
-      vars:
-        auto_upgrade_cron_hour: '9' # 4AM in EST
-        auto_upgrade_cron_minute: '0'
-
-# This one can run whenever
-- name: Set update cron (manifest service)
-  hosts: manifest_service
-  tasks:
-    - import_role:
-        name: auto_upgrade_cron
-      vars:
-        auto_upgrade_cron_hour: '9' # 4AM in EST
-        auto_upgrade_cron_minute: '0'

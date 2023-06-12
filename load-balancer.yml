@@ -12,7 +12,7 @@
   tasks:
 
     - name: Upgrade packages
-      apt: 
+      apt:
         upgrade: dist
         update_cache: yes
         cache_valid_time: 3600
@@ -38,6 +38,17 @@
         - self_signed_ssl_common_name: "{{ server_name }}"
       when: load_balancer_self_signed_ssl is defined and load_balancer_self_signed_ssl
 
+
+    - name: Install pip
+      apt:
+        name: python3-pip
+
+    - name: Install python packages
+      pip:
+        name:
+          - botocore
+          - boto3
+
     # Generate OpenSSL keys and certification with Let's Encrypt
     - import_role:
         name: mprahl.lets-encrypt-route-53
@@ -56,6 +67,6 @@
 
     - name: restart nginx
       service: name=nginx state=restarted
-      
+
     - import_role:
         name: cleanup
