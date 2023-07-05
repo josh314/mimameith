@@ -229,6 +229,27 @@
       register: ec2_shopify_data_dump_server_ec2_instance_result
       when: provision__shopify_data_dump
 
+
+    - name: Provision the shopify-mailchimp-campaigner instance in EC2
+      amazon.aws.ec2_instance:
+        state: running
+        image:
+          id: "{{ shopify_mailchimp_campaigner_server_ami }}"
+        region: "{{ shopify_mailchimp_campaigner_server_region }}"
+        instance_type: "{{ shopify_mailchimp_campaigner_server_instance_type }}"
+        key_name: "{{ shopify_mailchimp_campaigner_server_key_name }}"
+        security_groups:
+          - sg-052e5c37ecfa0cd7b # Internal
+          - sg-ef6fc897 # default (old)
+          - sg-04a9528a6686b9905 # outbound web
+        tags: "{{ shopify_mailchimp_campaigner_server_count_tags }}"
+        filters: "{{ shopify_mailchimp_campaigner_server_instance_filter }}"
+        exact_count: 1
+        detailed_monitoring: "{{ stack_env == 'prod' }}"
+      register: ec2_shopify_mailchimp_campaigner_server_ec2_instance_result
+      when: provision__shopify_mailchimp_campaigner
+
+
     - name: Provision the product-data-cache-updater instance in EC2
       amazon.aws.ec2_instance:
         state: running
@@ -250,50 +271,7 @@
       when: provision__product_data_cache_updater
 
     #################################################################################################
-    ## Collect necessary instance information not returned by the provisioning tasks
-    ##
-    ## These tasks are run when the corresponding resourse has been set for provisioning but the
-    ## requisite info was not returned from the provisioning task above
-
-    - name: Get database instance info (if not returned by the provisioning task)
-      amazon.aws.ec2_instance_info:
-        filters: "{{ db_server_instance_filter }}"
-      register: ec2_db_server_ec2_info_result
-      when: ec2_db_server_ec2_instance_result.instances is not defined or ec2_db_server_ec2_instance_result.instances[0] is not defined
-
-    - name: Get load balancer instance info (if not returned by the provisioning task)
-      amazon.aws.ec2_instance_info:
-        filters: "{{ load_balancer_instance_filter }}"
-      register: ec2_load_balancer_ec2_info_result
-      when: ec2_load_balancer_ec2_instance_result.instances is not defined or ec2_load_balancer_ec2_instance_result.instances[0] is not defined
-
-    - name: Get manifest service instance info (if not returned by the provisioning task)
-      amazon.aws.ec2_instance_info:
-        filters: "{{ manifest_service_instance_filter }}"
-      register: ec2_manifest_service_ec2_info_result
-      when: ec2_manifest_service_ec2_instance_result.instances is not defined or ec2_manifest_service_ec2_instance_result.instances[0] is not defined
-
-    - name: Get application server instance info (if not returned by the provisioning task)
-      amazon.aws.ec2_instance_info:
-        filters: "{{ app_server_instance_filter }}"
-      register: ec2_app_server_ec2_info_result
-      when: ec2_app_server_ec2_instance_result.instances is not defined or ec2_app_server_ec2_instance_result.instances[0] is not defined
-
-    - name: Get shopify data dump server instance info (if not returned by the provisioning task)
-      amazon.aws.ec2_instance_info:
-        filters: "{{ shopify_data_dump_server_instance_filter }}"
-      register: ec2_shopify_data_dump_server_ec2_info_result
-      when: ec2_shopify_data_dump_server_ec2_instance_result.instances is not defined or ec2_shopify_data_dump_server_ec2_instance_result.instances[0] is not defined
-
-    - name: Get product data cache updater server instance info (if not returned by the provisioning task)
-      amazon.aws.ec2_instance_info:
-        filters: "{{ product_data_cache_updater_server_instance_filter }}"
-      register: ec2_product_data_cache_updater_server_ec2_info_result
-      when: ec2_product_data_cache_updater_server_ec2_instance_result.instances is not defined or ec2_product_data_cache_updater_server_ec2_instance_result.instances[0] is not defined
-
-
-    #################################################################################################
-    ## Setting facts for later use (some tasks are doubled because the relevant info doesn't seem to be reliably output from a single task above)
+    ## Setting facts for later use
 
     # database facts
 
@@ -306,16 +284,10 @@
         db_server_instances: '{{ ec2_db_server_ec2_instance_result.instances }}'
       when: ec2_db_server_ec2_instance_result.instances is defined and ec2_db_server_ec2_instance_result.instances[0] is defined
 
-    - name: "Setting fact: db_server_instances (from ec2_info result)"
-      set_fact:
-        db_server_instances: '{{ ec2_db_server_ec2_info_result.instances }}'
-      when: ec2_db_server_ec2_info_result.instances is defined and ec2_db_server_ec2_info_result.instances[0] is defined
-
     - name: "Setting fact: db_server_host"
       set_fact:
         db_server_host: '{{ db_server_instances[0].private_ip_address }}'
       when: db_server_instances is defined and db_server_instances[0] is defined
-
 
     # load balancer facts
 
@@ -323,11 +295,6 @@
       set_fact:
         load_balancer_instance_id: '{{ ec2_load_balancer_ec2_instance_result.instances[0].instance_id }}'
       when: ec2_load_balancer_ec2_instance_result.instances is defined and ec2_load_balancer_ec2_instance_result.instances[0] is defined
-
-    - name: "Setting fact: load_balancer_instances (from ec2_info result)"
-      set_fact:
-        load_balancer_instances: '{{ ec2_load_balancer_ec2_info_result.instances }}'
-      when: ec2_load_balancer_ec2_info_result.instances is defined and ec2_load_balancer_ec2_info_result.instances[0] is defined
 
     - name: "Setting fact: load_balancer_instance_id"
       set_fact:
@@ -341,12 +308,6 @@
         manifest_service_instances: '{{ ec2_manifest_service_ec2_instance_result.instances }}'
       when: ec2_manifest_service_ec2_instance_result.instances is defined and ec2_manifest_service_ec2_instance_result.instances[0] is defined
 
-    - name: "Setting fact: manifest_service_instances (from ec2_info result)"
-      set_fact:
-        manifest_service_instances: '{{ ec2_manifest_service_ec2_info_result.instances }}'
-      when: ec2_manifest_service_ec2_info_result.instances is defined and ec2_manifest_service_ec2_info_result.instances[0] is defined
-
-
     - name: "Setting fact: manifest_service_host"
       set_fact:
         manifest_service_host: '{{ manifest_service_instances[0].private_ip_address }}'
@@ -358,11 +319,6 @@
       set_fact:
         app_server_instances: '{{ ec2_app_server_ec2_instance_result.instances }}'
       when: ec2_app_server_ec2_instance_result.instances is defined and ec2_app_server_ec2_instance_result.instances[0] is defined
-
-    - name: "Setting fact: app_server_instances (from ec2_info result)"
-      set_fact:
-        app_server_instances: '{{ ec2_app_server_ec2_info_result.instances }}'
-      when: ec2_app_server_ec2_info_result.instances is defined and ec2_app_server_ec2_info_result.instances[0] is defined
 
     - name: "Setting fact: app_server_addresses"
       set_fact:
@@ -376,10 +332,12 @@
         shopify_data_dump_server_instances: '{{ ec2_shopify_data_dump_server_ec2_instance_result.instances }}'
       when: ec2_shopify_data_dump_server_ec2_instance_result.instances is defined and ec2_shopify_data_dump_server_ec2_instance_result.instances[0] is defined
 
-    - name: "Setting fact: shopify_data_dump_server_instances (from ec2_info result)"
+    # shopify mailchimp campaigner facts
+
+    - name: "Setting fact: shopify_mailchimp_campaigner_server_instances (from ec2_instance result)"
       set_fact:
-        shopify_data_dump_server_instances: '{{ ec2_shopify_data_dump_server_ec2_info_result.instances }}'
-      when: ec2_shopify_data_dump_server_ec2_info_result.instances is defined and ec2_shopify_data_dump_server_ec2_info_result.instances[0] is defined
+        shopify_mailchimp_campaigner_server_instances: '{{ ec2_shopify_mailchimp_campaigner_server_ec2_instance_result.instances }}'
+      when: ec2_shopify_mailchimp_campaigner_server_ec2_instance_result.instances is defined and ec2_shopify_mailchimp_campaigner_server_ec2_instance_result.instances[0] is defined
 
     # product data cache updater facts
 
@@ -387,12 +345,6 @@
       set_fact:
         product_data_cache_updater_server_instances: '{{ ec2_product_data_cache_updater_server_ec2_instance_result.instances }}'
       when: ec2_product_data_cache_updater_server_ec2_instance_result.instances is defined and ec2_product_data_cache_updater_server_ec2_instance_result.instances[0] is defined
-
-    - name: "Setting fact: product_data_cache_updater_server_instances (from ec2_info result)"
-      set_fact:
-        product_data_cache_updater_server_instances: '{{ ec2_product_data_cache_updater_server_ec2_info_result.instances }}'
-      when: ec2_product_data_cache_updater_server_ec2_info_result.instances is defined and ec2_product_data_cache_updater_server_ec2_info_result.instances[0] is defined
-
 
     #################################################################################################
     ## Wait for servers to be available
@@ -425,6 +377,11 @@
       set_fact:
         wait_list: "{{ wait_list + shopify_data_dump_server_instances }}"
       when: shopify_data_dump_server_instances is defined
+
+    - name: Add shopify mailchimp campaigner server to wait list
+      set_fact:
+        wait_list: "{{ wait_list + shopify_mailchimp_campaigner_server_instances }}"
+      when: shopify_mailchimp_campaigner_server_instances is defined
 
     - name: Add product data cache updater to wait list
       set_fact:
@@ -529,11 +486,24 @@
         label: "instance: {{ server.instance_id }}, public_dns: {{ server.public_dns_name }}, public_ip: {{ server.public_ip_address }}"
       when: shopify_data_dump_server_instances is defined and server.public_ip_address is defined
 
+    - name: add shopify mailchimp campaigner server host(s) to inventory
+      add_host:
+        hostname: "{{ server.public_ip_address }}"
+        ansible_user: ubuntu
+        ansible_ssh_private_key_file: "{{ shopify_mailchimp_campaigner_server_key_file }}"
+        groups:
+          - shopify_mailchimp_campaigner
+      loop: "{{ shopify_mailchimp_campaigner_server_instances }}"
+      loop_control:
+        loop_var: server
+        label: "instance: {{ server.instance_id }}, public_dns: {{ server.public_dns_name }}, public_ip: {{ server.public_ip_address }}"
+      when: shopify_mailchimp_campaigner_server_instances is defined and server.public_ip_address is defined
+
     - name: add product data cache updater server host(s) to inventory
       add_host:
         hostname: "{{ server.public_ip_address }}"
         ansible_user: ubuntu
-        ansible_ssh_private_key_file: "{{ shopify_data_dump_server_key_file }}"
+        ansible_ssh_private_key_file: "{{ product_data_cache_updater_server_key_file }}"
         groups:
           - product_data_cache_updater
       loop: "{{ product_data_cache_updater_server_instances }}"
@@ -575,11 +545,17 @@
     expresshop_manifest_service__application_port: "{{ manifest_service__port }}"
   when: configure__manifest_service
 
-# - name: Shopify data dump server
-#   import_playbook: shopify-data-dump-server.yml
-#   vars:
-#     db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
-#   when: configure__shopify_data_dump
+- name: Shopify data dump server
+  import_playbook: shopify-data-dump-server.yml
+  vars:
+    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+  when: configure__shopify_data_dump
+
+- name: Shopify mailchimp campaigner server
+  import_playbook: shopify-mailchimp-campaigner-server.yml
+  vars:
+    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+  when: configure__shopify_mailchimp_campaigner
 
 - name: Product data cache updater server
   import_playbook: product-data-cache-updater-server.yml

@@ -1,4 +1,4 @@
-# Replace the values below ith real values and move to `extra-vars.yml`
+# Replace the values below with real values and move to `extra-vars.yml`
 
 lot_commander__application_repository_version: xxx
 
@@ -13,3 +13,21 @@ shopify_mailchimp_campaigner__application_repository_version: xxx
 product_data_cache_updater__application_repository_version: xxx
 
 expresshop_manifest_service__application_repository_version: xxx
+
+# toggle these to enable/disable resource provisioing
+provision__db_server: false
+provision__load_balancer: false
+provision__app_servers: false
+provision__manifest_service: false
+provision__shopify_data_dump: false
+provision__shopify_mailchimp_campaigner: false
+provision__product_data_cache_updater: false
+
+# toggle these to enable/disable resource configuration, i.e. running group
+configure__db_server: false
+configure__load_balancer: false
+configure__app_servers: false
+configure__manifest_service: false
+configure__shopify_data_dump: false
+configure__shopify_mailchimp_campaigner: false
+configure__product_data_cache_updater: false

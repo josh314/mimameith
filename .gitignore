@@ -8,3 +8,6 @@ sample/
 # secret shit
 password
 unsafe*
+
+# deploy script versioning vars
+extra-vars.yml
