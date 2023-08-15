@@ -51,11 +51,22 @@
     #     hour: "19"
     #     minute: "0"
 
-    - name: Set the new lots cron
+    # - name: Set the new lots cron
+    #   cron:
+    #     name: shopify_mailchimp_campaigner (new lots)
+    #     state: present
+    #     job: "node {{ shopify_mailchimp_campaigner__project_path }}/index.js -s {{ shopify_mailchimp_campaigner__project_path }}/campaign-settings/new-lots.js >> {{ shopify_mailchimp_campaigner__log_path }}/cronlog 2>> {{ shopify_mailchimp_campaigner__log_path }}/cronlog.err"
+    #     month: "*"
+    #     day: "*"
+    #     weekday: "1-5"
+    #     hour: "19"
+    #     minute: "0"
+
+    - name: Set the manifested pallets cron
       cron:
-        name: shopify_mailchimp_campaigner (new lots)
+        name: shopify_mailchimp_campaigner (manifested pallets)
         state: present
-        job: "node {{ shopify_mailchimp_campaigner__project_path }}/index.js -s {{ shopify_mailchimp_campaigner__project_path }}/campaign-settings/new-lots.js >> {{ shopify_mailchimp_campaigner__log_path }}/cronlog 2>> {{ shopify_mailchimp_campaigner__log_path }}/cronlog.err"
+        job: "node {{ shopify_mailchimp_campaigner__project_path }}/index.js -s {{ shopify_mailchimp_campaigner__project_path }}/campaign-settings/manifested-pallets.js >> {{ shopify_mailchimp_campaigner__log_path }}/cronlog 2>> {{ shopify_mailchimp_campaigner__log_path }}/cronlog.err"
         month: "*"
         day: "*"
         weekday: "1-5"
