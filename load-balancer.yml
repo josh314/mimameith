@@ -4,7 +4,7 @@
   vars_files:
     - secrets.yml
   vars:
-    ssl_cert_dir: /etc/ssl/{{ server_name }}
+    ssl_cert_dir: /etc/ssl/{{ server_hostname }}
     ssl_key_file: "{{ server_hostname }}.key"
     ssl_cert_file: "{{ server_hostname }}.crt"
     ssl_csr_file: "{{ server_hostname }}.csr"
@@ -35,7 +35,7 @@
         - self_signed_ssl_key_file: "{{ ssl_key_file }}"
         - self_signed_ssl_cert_file: "{{ ssl_cert_file }}"
         - self_signed_ssl_csr_file: "{{ ssl_csr_file }}"
-        - self_signed_ssl_common_name: "{{ server_name }}"
+        - self_signed_ssl_common_name: "{{ server_hostname }}"
       when: load_balancer_self_signed_ssl is defined and load_balancer_self_signed_ssl
 
 
@@ -53,7 +53,7 @@
     - import_role:
         name: mprahl.lets-encrypt-route-53
       vars:
-        - ler53_cert_common_name: "{{ server_name }}"
+        - ler53_cert_common_name: "{{ server_hostname }}"
         - ler53_route_53_domain: wholesaleninjas.com
         - ler53_aws_access_key: "{{ aws.credentials.admin.aws_access_key_id }}"
         - ler53_aws_secret_key: "{{ aws.credentials.admin.aws_secret_access_key }}"
