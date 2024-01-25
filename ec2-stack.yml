@@ -358,7 +358,7 @@
         wait_list: "{{ wait_list + db_server_instances }}"
       when: db_server_instances is defined
 
-    - name: Add app servers to wait list
+    - name: Add load balancer to wait list
       set_fact:
         wait_list: "{{ wait_list + load_balancer_instances }}"
       when: load_balancer_instances is defined

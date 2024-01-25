@@ -14,7 +14,7 @@
 
     - name: Upgrade packages
       become: yes
-      apt: 
+      apt:
         upgrade: yes
         update_cache: yes
         cache_valid_time: 3600
@@ -28,7 +28,7 @@
         name: geerlingguy.nodejs
       become: yes
       vars:
-        nodejs_version: "16.x"
+        nodejs_version: "{{ lot_commander__node_version}}"
 
     # Install nginx and configure as a reverse proxy for the application
     - import_role:
@@ -40,13 +40,13 @@
         upstream_servers:
           - localhost:{{ app_port }}
 
-    - name: Stop app if already running. Ignore error caused by app not running yet 
+    - name: Stop app if already running. Ignore error caused by app not running yet
       command: pm2 stop process.json
       args:
         chdir: "{{ path }}"
       ignore_errors: yes
 
-    - import_role: 
+    - import_role:
         name: lot_commander
       vars:
         lot_commander__application_repository: git@gitlab.com:wazue/lot-commander.git

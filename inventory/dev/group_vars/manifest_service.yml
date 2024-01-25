@@ -1,1 +1,3 @@
 manifest_service__port: 8081
+
+manifest_service__node_version: 20.x

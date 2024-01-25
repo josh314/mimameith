@@ -12,3 +12,4 @@ shopify_prod_store: ninjas_and_such
 shopify_staging_store: ninja_staging
 
 lot_commander__aplication_env: development
+lot_commander__node_version: 20.x
