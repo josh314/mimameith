@@ -8,6 +8,12 @@
       tier: crons
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
+    cronbox_instance_filter:
+      instance-state-name: running
+      tag:Name: cronbox
+      tag:tier: crons
+      tag:org: "{{ org | default('') }}"
+      tag:env: "{{ stack_env }}"
 
 
 ###########################################################
@@ -19,29 +25,30 @@
 
   tasks:
 
-    - name: Launch the server instance in EC2
-      ec2:
-        wait: yes
-        image: "{{ cronbox_ami }}"
+    - name: Launch the cronbox server instance in EC2
+      amazon.aws.ec2_instance:
+        state: running
+        image:
+          id: "{{ cronbox_ami }}"
         region: "{{ cronbox_region }}"
         instance_type: "{{ cronbox_instance_type }}"
         key_name: "{{ cronbox_key_name }}"
-        group:
-          - Internal
-          - default
-        instance_tags: "{{ cronbox_count_tags }}"
+        security_groups:
+          - sg-052e5c37ecfa0cd7b # Internal
+          - sg-ef6fc897 # default (old)
+        tags: "{{ cronbox_count_tags }}"
+        filters: "{{ cronbox_instance_filter }}"
         exact_count: "{{ num_cronbox }}"
-        count_tag: "{{ cronbox_count_tags }}"
-      register: ec2_cronbox
+        detailed_monitoring: "{{ stack_env == 'prod' }}"
+      register: ec2_cronbox_ec2_instance_result
 
     - name: Associate Elastic IP with cronbox
-      ec2_eip:
-        device_id: "{{ ec2_cronbox.tagged_instances[0].id }}"
+      community.aws.ec2_eip:
+        device_id: "{{ ec2_cronbox_ec2_instance_result.instances[0].instance_id }}"
         ip: "{{ cronbox_eip }}"
-        region: "{{ ec2_cronbox.tagged_instances[0].region }}"
       register: ec2_cronbox_eip_result
 
-    - name: add load balancer host elastic IP to inventory
+    - name: add cronbox host elastic IP to inventory
       add_host:
         hostname: "{{ ec2_cronbox_eip_result.public_ip }}"
         ansible_user: ubuntu
@@ -50,24 +57,11 @@
           - cronbox
       when: ec2_cronbox_eip_result.public_ip is defined
 
-    # - name: add cronbox host(s) to inventory
-    #   add_host:
-    #     hostname: "{{ item.public_ip }}"
-    #     ansible_user: ubuntu
-    #     ansible_ssh_private_key_file: "{{ cronbox_key_file }}"
-    #     groups:
-    #       - cronbox
-    #   with_items: "{{ ec2_cronbox.tagged_instances }}"
-    #   when: item.public_ip is defined
-
-    # TODO: use wait_for_connection module instead of wait_for?
-    - name: wait for newly added hosts to be ready for SSH connections
+    - name: Wait for connection to cronbox
       wait_for:
-        host: "{{ item.public_ip }}"
+        host: "{{ cronbox_eip }}"
         port: 22
         search_regex: OpenSSH
-      with_items: "{{ ec2_cronbox.tagged_instances }}"
-      when: item.public_ip is defined
 
 ###########################################################
 # Configure provisioned resources
@@ -81,7 +75,7 @@
 ###########################################################
 # Set update crons
 # ================
-# 
+#
 ###########################################################
 
 - name: Set update cron (cronbox)

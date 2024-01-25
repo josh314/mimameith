@@ -140,3 +140,16 @@ ansible-playbook ec2-stack.yml \
     --vault-password-file password \
     -e lot-commander__application_repository_version=<branch name of lot-commander>
 ```
+
+See also the bash scripts `run.sh` and `run-dev.sh`. These scripts run the `ec2-stack.yml` playbook with a number of variables loaded from `extra-vars.yml`. This variable file is not included in the repo but see `extra-vars-sample.yml` to view how it should be structured.
+
+## `ec2-cronbox.yml`
+
+A separate playbook to configure a server for occasional crons.
+
+```
+ansible-playbook ec2-cronbox.yml \
+    -i inventory/prod/hosts \
+    --vault-password-file password
+```
+
