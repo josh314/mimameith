@@ -35,7 +35,7 @@ load_balancer_eip: 34.235.84.237
 
 # AWS instance settings for the application servers
 app_server_ami: ami-09e67e426f25ce0d7 # ubuntu 20.4 LTS
-app_server_instance_type: t3.micro
+app_server_instance_type: t3.small
 app_server_region: us-east-1
 app_server_key_name: josh-key-pair-useast
 app_server_key_file: ~/.ssh/josh-key-pair-useast.pem

@@ -143,6 +143,12 @@
         filters: "{{ db_server_instance_filter }}"
         exact_count: "{{ num_db_servers }}"
         detailed_monitoring: "{{ stack_env == 'prod' }}"
+        volumes:
+          - device_name: /dev/sda1
+            ebs:
+              volume_size: 30
+              volume_type: gp3
+              delete_on_termination: true
       register: ec2_db_server_ec2_instance_result
       when: provision__db_server
 

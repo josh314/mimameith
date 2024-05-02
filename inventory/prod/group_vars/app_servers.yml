@@ -11,5 +11,5 @@
 shopify_prod_store: wholesale_ninjas
 shopify_staging_store: ninja_staging
 
-lot_commander__aplication_env: production
+lot_commander__application_env: production
 lot_commander__node_version: 16.x

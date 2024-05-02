@@ -40,6 +40,10 @@
     # =========
     ####################################################
 
+    - name: Set time zone
+      community.general.timezone:
+        name: America/New_York
+
     # - name: Set the test cron
     #   cron:
     #     name: shopify_mailchimp_campaigner
@@ -81,7 +85,7 @@
         month: "*"
         day: "*"
         weekday: "1-5"
-        hour: "20"
+        hour: "15"
         minute: "0"
 
     - name: Set the everyday bargains cron
@@ -92,7 +96,7 @@
         month: "*"
         day: "*"
         weekday: "1-6"
-        hour: "15"
+        hour: "10"
         minute: "0"
 
     - import_role:
