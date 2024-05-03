@@ -43,14 +43,14 @@
     db_server_count_tags:
       Name: mongodb-server
       tier: database
-      stack: lot-commander
+      stack: mimameith
       org: "{{ org | default('') }}"
       env: "{{ stack_env }}"
     db_server_instance_filter:
       instance-state-name: running
       tag:Name: mongodb-server
       tag:tier: database
-      tag:stack: lot-commander
+      tag:stack: mimameith
       tag:org: "{{ org | default('') }}"
       tag:env: "{{ stack_env }}"
 

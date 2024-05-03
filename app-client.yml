@@ -1,0 +1,70 @@
+- name: launch client-lot-commander app-server for client `{{ client_handle }}`
+  hosts: client_app_servers
+  vars_files:
+    - secrets.yml
+  vars:
+    client_lot_commander__application_repository_version: master
+    app_port: 9000
+    path: "{{ ansible_env.HOME }}/client-lot-commander"
+    skip_application_auth: false
+
+  # TODO? use HTTP2
+
+  tasks:
+
+    - name: Upgrade packages
+      become: yes
+      apt:
+        upgrade: yes
+        update_cache: yes
+        cache_valid_time: 3600
+
+    # install npm/node and global node packages
+    - import_role:
+        name: geerlingguy.nodejs
+      become: yes
+      vars:
+        nodejs_version: "{{ client_lot_commander__node_version}}"
+
+    # Install nginx and configure as a reverse proxy for the application
+    - import_role:
+        name: nginx
+      become: yes
+      vars:
+        server_name: "{{client_handle}}.lot-commander.wholesaleninjas.com"
+        tls_enabled: false
+        upstream_servers:
+          - localhost:{{ app_port }}
+
+    - name: Stop app if already running. Ignore error caused by app not running yet
+      command: pm2 stop process.json
+      args:
+        chdir: "{{ path }}"
+      ignore_errors: yes
+
+    - import_role:
+        name: client_lot_commander
+      vars:
+        client_lot_commander__application_repository: git@gitlab.com:wazue/client-lot-commander.git
+        client_lot_commander__application_port: "{{ app_port }}"
+        client_lot_commander__project_path: "{{ path }}"
+        local_deploy_key_file: ~/.ssh/aws_deploy_key_ed25519
+        remote_deploy_key_file: /home/{{ ansible_user }}/.ssh/id_ed25519
+        client_lot_commander__skip_auth: "{{ skip_application_auth }}"
+        db_app_user: "{{ db.auth.app.user }}"
+        db_app_password: "{{ db.auth.app.password }}"
+        client_lot_commander__aws_access_key_id: "{{ aws.credentials.client_lot_commander.aws_access_key_id }}"
+        client_lot_commander__aws_secret_access_key: "{{ aws.credentials.client_lot_commander.aws_secret_access_key }}"
+        client_lot_commander__session_secret: "{{ client_lot_commander.session_secret }}"
+
+    - import_role:
+        name: pm2_app_service
+      vars:
+        pm2_app_service__path: "{{ path }}"
+
+    - name: restart nginx
+      become: yes
+      service: name=nginx state=restarted
+
+    - import_role:
+        name: cleanup

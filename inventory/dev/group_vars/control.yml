@@ -85,3 +85,20 @@ cronbox_key_file: ~/.ssh/josh-key-pair-useast.pem
 num_cronbox: 1
 
 cronbox_eip: 35.169.148.179
+
+# Client servers
+
+# AWS instance settings for the load balancer
+client_load_balancer_ami: ami-09e67e426f25ce0d7 # ubuntu 20.4 LTS
+client_load_balancer_instance_type: t3.nano
+client_load_balancer_region: us-east-1
+client_load_balancer_key_name: josh-key-pair-useast
+client_load_balancer_key_file: ~/.ssh/josh-key-pair-useast.pem
+
+# AWS instance settings for the application servers
+client_app_server_ami: ami-09e67e426f25ce0d7 # ubuntu 20.4 LTS
+client_app_server_instance_type: t3.micro
+client_app_server_region: us-east-1
+client_app_server_key_name: josh-key-pair-useast
+client_app_server_key_file: ~/.ssh/josh-key-pair-useast.pem
+num_client_app_servers: 1

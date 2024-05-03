@@ -1,0 +1,283 @@
+
+###########################################################
+# Provision AWS resources
+# =======================
+#
+###########################################################
+
+- name: Provision AWS resources
+  hosts: control
+  gather_facts: no
+  vars:
+
+    client_app_server_count_tags:
+      tier: app_server
+      stack: client-lot-commander
+      client: "{{ client_handle }}"
+      org: "{{ org | default('') }}"
+      env: "{{ stack_env }}"
+      version: "{{ client_lot_commander__application_repository_version }}"
+    client_app_server_instance_filter:
+      instance-state-name: running
+      tag:tier: app_server
+      tag:stack: client-lot-commander
+      tag:client: "{{ client_handle }}"
+      tag:org: "{{ org | default('') }}"
+      tag:env: "{{ stack_env }}"
+      tag:version: "{{ client_lot_commander__application_repository_version }}"
+
+    client_load_balancer_count_tags:
+      Name: client-lot-commander_lb
+      tier: load_balancer
+      stack: client-lot-commander
+      client: "{{ client_handle }}"
+      org: "{{ org | default('') }}"
+      env: "{{ stack_env }}"
+    client_load_balancer_instance_filter:
+      instance-state-name: running
+      tag:Name: client-lot-commander_lb
+      tag:tier: load_balancer
+      tag:stack: client-lot-commander
+      tag:client: "{{ client_handle }}"
+      tag:org: "{{ org | default('') }}"
+      tag:env: "{{ stack_env }}"
+
+
+  tasks:
+
+  #####################################################################################
+  # EC2 provisioning and configuration
+  # ==================================
+  #
+  #####################################################################################
+
+    - name: Provision the client load balancer instance in EC2
+      amazon.aws.ec2_instance:
+        state: running
+        image:
+          id: "{{ client_load_balancer_ami }}"
+        region: "{{ client_load_balancer_region }}"
+        instance_type: "{{ client_load_balancer_instance_type }}"
+        key_name: "{{ client_load_balancer_key_name }}"
+        security_groups:
+          - sg-052e5c37ecfa0cd7b # Internal
+          - sg-ef6fc897 # default (old)
+          - sg-0354ff7a734f377c3 # lot_commander::load_balancer
+          - sg-3fe45677 # public web server
+        tags: "{{ client_load_balancer_count_tags }}"
+        filters: "{{ client_load_balancer_instance_filter }}"
+        exact_count: 1
+        detailed_monitoring: "{{ stack_env == 'prod' }}"
+      register: ec2_client_load_balancer_ec2_instance_result
+      when: provision__client_load_balancer
+
+    - name: Provision the client application instance(s) in EC2
+      amazon.aws.ec2_instance:
+        state: running
+        image:
+          id: "{{ client_app_server_ami }}"
+        region: "{{ client_app_server_region }}"
+        instance_type: "{{ client_app_server_instance_type }}"
+        key_name: "{{ client_app_server_key_name }}"
+        security_groups:
+          - sg-052e5c37ecfa0cd7b # Internal
+          - sg-ef6fc897 # default (old)
+          - sg-0d79155d77efa9078 # EHDB access
+          - sg-091a4954b4f624c04 # lot_commander::app_server
+        tags: "{{ client_app_server_count_tags }}"
+        filters: "{{ client_app_server_instance_filter }}"
+        exact_count: 1
+        detailed_monitoring: "{{ stack_env == 'prod' }}"
+      register: ec2_client_app_server_ec2_instance_result
+      when: provision__client_app_servers
+
+
+    #################################################################################################
+    ## Setting facts for later use
+
+    # database facts
+
+    - name: Gather information about database
+      amazon.aws.ec2_instance_info:
+        filters:
+          tag:Name: mongodb-server
+          tag:tier: database
+          tag:stack: mimameith
+          tag:org: "{{ org | default('') }}"
+          tag:env: "{{ stack_env }}"
+      register: ec2_db_server_instances_info
+
+    - name: Set fact for db server instance ip
+      set_fact:
+        db_server_host: "{{ ec2_db_server_instances_info.instances[0].private_ip_address }}"
+
+    # manifest service facts
+
+    - name: Gather information about manifest service
+      amazon.aws.ec2_instance_info:
+        filters:
+          tag:Name: manifest-svc
+          tag:tier: service
+          tag:stack: mimameith
+          tag:org: "{{ org | default('') }}"
+          tag:env: "{{ stack_env }}"
+      register: ec2_manifest_service_server_instances_info
+
+    - name: Set fact for manifest server instance ip
+      set_fact:
+       manifest_service_host: "{{ ec2_manifest_service_server_instances_info.instances[0].private_ip_address }}"
+
+    # load balancer facts
+
+    - name: "Setting fact: client_load_balancer_instance_id (from ec2_instance result)"
+      set_fact:
+        client_load_balancer_instance_id: '{{ ec2_client_load_balancer_ec2_instance_result.instances[0].instance_id }}'
+      when: ec2_client_load_balancer_ec2_instance_result.instances is defined and ec2_client_load_balancer_ec2_instance_result.instances[0] is defined
+
+    - name: "Setting fact: client_load_balancer_instance_id"
+      set_fact:
+        client_load_balancer_instance_id: '{{ client_load_balancer_instances[0].instance_id }}'
+      when: client_load_balancer_instances is defined and client_load_balancer_instances[0] is defined
+
+    - name: "Setting fact: client_load_balancer_server_hostname"
+      set_fact:
+        client_load_balancer_server_hostname:  "{% if stack_env == 'dev' %}dev.{% endif %}{{ client_handle }}.lot-commander.wholesaleninjas.com"
+
+    # app server facts
+
+    - name: "Setting fact: client_app_server_instances (from ec2_instance result)"
+      set_fact:
+        client_app_server_instances: '{{ ec2_client_app_server_ec2_instance_result.instances }}'
+      when: ec2_client_app_server_ec2_instance_result.instances is defined and ec2_client_app_server_ec2_instance_result.instances[0] is defined
+
+    - name: "Setting fact: client_app_server_addresses"
+      set_fact:
+        client_app_server_addresses: '{{ client_app_server_instances | map(attribute="private_ip_address") | map("regex_replace", "^(.*)$", "\1:80") | list }}'
+      when: client_app_server_instances is defined and client_app_server_instances[0] is defined
+
+    - name: getting EIP information
+      amazon.aws.ec2_eip_info:
+        filters:
+          tag:client: "{{ client_handle }}"
+          tag:stack: client-lot-commander
+          tag:env: "{{ stack_env }}"
+      register: eip_info
+
+    - name: "Setting fact: client_load_balancer_eip"
+      set_fact:
+        client_load_balancer_eip: '{{ eip_info.addresses[0].public_ip }}'
+
+
+    #################################################################################################
+    ## Wait for servers to be available
+
+    - name: Initialize empty wait list
+      set_fact:
+        wait_list: []
+
+    - name: Add client load balancer to wait list
+      set_fact:
+        wait_list: "{{ wait_list + client_load_balancer_instances }}"
+      when: client_load_balancer_instances is defined
+
+    - name: Add client app servers to wait list
+      set_fact:
+        wait_list: "{{ wait_list + client_app_server_instances }}"
+      when: client_app_server_instances is defined
+
+    - name: Wait for connections to wait list hosts
+      wait_for:
+        host: "{{ item.public_ip_address }}"
+        port: 22
+        search_regex: OpenSSH
+      loop: "{{ wait_list }}"
+      loop_control:
+        loop_var: item
+        index_var: idx
+        label: "{{ item.tags.Name if items.tags.Name is defined else item.tags.tier }}"
+
+
+    #################################################################################################
+    ## EC2 level configuration
+
+    - name: Tagging client app server instances with a iterated Name tag
+      amazon.aws.ec2_tag:
+        resource: "{{ client_app_server.instance_id }}"
+        tags:
+          Name: "client-lot-commander_{{idx}}"
+      loop: "{{ client_app_server_instances }}"
+      loop_control:
+        loop_var: client_app_server
+        index_var: idx
+        label: "{{ client_app_server.instance_id }}"
+      when: client_app_server_instances is defined and client_app_server.tags.Name is not defined
+
+# TODO: only do this if there is not already an EIP associated to this
+    - name: Associate Elastic IP with client load balancer
+      community.aws.ec2_eip:
+        device_id: "{{ client_load_balancer_instance_id }}"
+        ip: "{{ client_load_balancer_eip }}"
+      register: ec2_client_load_balancer_eip_result
+      when: client_load_balancer_instance_id is defined and client_load_balancer_instance_id != client_load_balancer_eip
+
+
+    #################################################################################################
+    ## Adding newly provisioned hosts to inventory
+
+    - name: add client load balancer host elastic IP to inventory
+      add_host:
+        hostname: "{{ ec2_client_load_balancer_eip_result.public_ip }}"
+        ansible_user: ubuntu
+        ansible_ssh_private_key_file: "{{ client_load_balancer_key_file }}"
+        groups:
+          - client_load_balancer
+      when: ec2_client_load_balancer_eip_result.public_ip is defined
+
+    - name: add client app server host(s) to inventory
+      add_host:
+        hostname: "{{ client_app_server.public_ip_address }}"
+        ansible_user: ubuntu
+        ansible_ssh_private_key_file: "{{ client_app_server_key_file }}"
+        groups:
+          - client_app_servers
+      loop: "{{ client_app_server_instances }}"
+      loop_control:
+        loop_var: client_app_server
+        label: "instance: {{ client_app_server.instance_id }}, public_dns: {{ client_app_server.public_dns_name }}, public_ip: {{ client_app_server.public_ip_address }}"
+      when: client_app_server_instances is defined and client_app_server.public_ip_address is defined
+
+    # this is only necessary so we can use the manifest_service group_vars (Specifically the port number)
+    - name: add manifest service host(s) to inventory
+      add_host:
+        hostname: "{{ server.public_ip_address }}"
+        ansible_user: ubuntu
+        ansible_ssh_private_key_file: "{{ manifest_service_key_file }}"
+        groups:
+          - manifest_service
+      loop: "{{ ec2_manifest_service_server_instances_info.instances }}"
+      loop_control:
+        loop_var: server
+        label: "instance: {{ server.instance_id }}, public_dns: {{ server.public_dns_name }}, public_ip: {{ server.public_ip_address }}"
+      when: ec2_manifest_service_server_instances_info.instances is defined and server.public_ip_address is defined
+
+
+###########################################################
+# Configure provisioned resources with server playbooks
+# =====================================================
+#
+###########################################################
+
+- name: Configure client load balancer
+  import_playbook: load-balancer-client.yml
+  vars:
+    server_hostname: "{{ hostvars[ groups['control'][0] ].client_load_balancer_server_hostname }}"
+    server_nodes: "{{ hostvars[ groups['control'][0] ].client_app_server_addresses }}"
+  when: configure__client_load_balancer
+
+- name: Client application server(s) playbook
+  import_playbook: app-client.yml
+  vars:
+    client_lot_commander__client_handle: "{{ client_handle }}"
+    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+    manifest_service_location: "{{ hostvars[ groups['control'][0] ].manifest_service_host }}:{{ hostvars[ groups['manifest_service'][0] ].manifest_service__port }}"
+  when: configure__client_app_servers

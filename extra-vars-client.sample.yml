@@ -1,0 +1,12 @@
+# Replace the values below with real values and move to `extra-vars-client.yml`
+client_handle: xxx
+client_lot_commander__application_repository_version: xxx
+client_lot_commander__node_version: xxx
+
+# toggle these to enable/disable resource provisioing
+provide__client_app_servers: false
+provide__client_load_balancer: false
+
+# toggle these to enable/disable resource configuration, i.e. running group
+configure__client_app_servers: false
+configure__client_load_balancer: false

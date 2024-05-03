@@ -1,0 +1,14 @@
+---
+
+####################################################
+# App servers (client)
+# ===========
+#
+# These variables are for the client app_servers
+#
+############################################################
+
+shopify_store: ninjas_and_such
+
+client_lot_commander__application_env: development
+client_lot_commander__node_version: 20.x

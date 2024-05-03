@@ -28,7 +28,7 @@
         name: geerlingguy.nodejs
       become: yes
       vars:
-        nodejs_version: "{{ lot_commander__node_version}}"
+        nodejs_version: "{{ lot_commander__node_version }}"
 
     # Install nginx and configure as a reverse proxy for the application
     - import_role:

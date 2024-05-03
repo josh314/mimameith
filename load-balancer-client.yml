@@ -1,0 +1,72 @@
+- name: Configure load balancer
+  hosts: client_load_balancer
+  become: yes
+  vars_files:
+    - secrets.yml
+  vars:
+    ssl_cert_dir: /etc/ssl/{{ server_hostname }}
+    ssl_key_file: "{{ server_hostname }}.key"
+    ssl_cert_file: "{{ server_hostname }}.crt"
+    ssl_csr_file: "{{ server_hostname }}.csr"
+
+  tasks:
+
+    - name: Upgrade packages
+      apt:
+        upgrade: dist
+        update_cache: yes
+        cache_valid_time: 3600
+
+    # Install nginx and configure as a load balancer for the application servers
+    - import_role:
+        name: nginx
+      vars:
+        server_name: "{{ server_hostname }}"
+        upstream_servers: "{{ server_nodes }}"
+        key_file: "{{ ssl_cert_dir }}/{{ ssl_key_file }}"
+        cert_file: "{{ ssl_cert_dir }}/{{ ssl_cert_file }}"
+        tls_enabled: true
+
+    # Generate self-signed OpenSSL keys and cert
+    - import_role:
+        name: self_signed_ssl
+      vars:
+        - self_signed_ssl_cert_dir: "{{ ssl_cert_dir }}"
+        - self_signed_ssl_key_file: "{{ ssl_key_file }}"
+        - self_signed_ssl_cert_file: "{{ ssl_cert_file }}"
+        - self_signed_ssl_csr_file: "{{ ssl_csr_file }}"
+        - self_signed_ssl_common_name: "{{ server_hostname }}"
+      when: client_load_balancer_self_signed_ssl is defined and client_load_balancer_self_signed_ssl
+
+
+    - name: Install pip
+      apt:
+        name: python3-pip
+
+    - name: Install python packages
+      pip:
+        name:
+          - botocore
+          - boto3
+
+    # Generate OpenSSL keys and certification with Let's Encrypt
+    - import_role:
+        name: mprahl.lets-encrypt-route-53
+      vars:
+        - ler53_cert_common_name: "{{ server_hostname }}"
+        - ler53_route_53_domain: wholesaleninjas.com
+        - ler53_aws_access_key: "{{ aws.credentials.admin.aws_access_key_id }}"
+        - ler53_aws_secret_key: "{{ aws.credentials.admin.aws_secret_access_key }}"
+        - ler53_cert_dir: "{{ ssl_cert_dir }}"
+        - ler53_key_file_name: "{{ ssl_key_file }}"
+        - ler53_cert_file_name: "{{ ssl_cert_file }}"
+        - ler53_csr_file_name: "{{ ssl_csr_file }}"
+        - ler53_account_email: josh314@gmail.com
+        - ler53_account_email: "{{ maintenance_contact_email }}"
+      when: client_load_balancer_self_signed_ssl is undefined or not client_load_balancer_self_signed_ssl
+
+    - name: restart nginx
+      service: name=nginx state=restarted
+
+    - import_role:
+        name: cleanup
