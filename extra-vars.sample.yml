@@ -17,7 +17,6 @@ product_data_cache_updater__application_repository_version: xxx
 expresshop_manifest_service__application_repository_version: xxx
 
 # toggle these to enable/disable resource provisioing. Also fetches metadata that may be important for configuring other resources.
-provision__db_server: false
 provision__load_balancer: false
 provision__app_servers: false
 provision__manifest_service: false
@@ -26,7 +25,6 @@ provision__shopify_mailchimp_campaigner: false
 provision__product_data_cache_updater: false
 
 # toggle these to enable/disable resource configuration, i.e. running group
-configure__db_server: false
 configure__load_balancer: false
 configure__app_servers: false
 configure__manifest_service: false

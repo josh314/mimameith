@@ -40,20 +40,6 @@
       tag:org: "{{ org | default('') }}"
       tag:env: "{{ stack_env }}"
 
-    db_server_count_tags:
-      Name: mongodb-server
-      tier: database
-      stack: mimameith
-      org: "{{ org | default('') }}"
-      env: "{{ stack_env }}"
-    db_server_instance_filter:
-      instance-state-name: running
-      tag:Name: mongodb-server
-      tag:tier: database
-      tag:stack: mimameith
-      tag:org: "{{ org | default('') }}"
-      tag:env: "{{ stack_env }}"
-
     manifest_service_count_tags:
       Name: manifest-svc
       tier: service
@@ -126,46 +112,20 @@
   #
   #####################################################################################
 
-
-    - name: Provision the Database instance in EC2
-      amazon.aws.ec2_instance:
-        state: running
-        image:
-          id: "{{ db_server_ami }}"
-        region: "{{ db_server_region }}"
-        instance_type: "{{ db_server_instance_type }}"
-        key_name: "{{ db_server_key_name }}"
-        security_groups:
-          - sg-052e5c37ecfa0cd7b # Internal
-          - sg-ef6fc897 # default (old)
-          - sg-0d2b2f3d26d6fefdc # EHDB
-        tags: "{{ db_server_count_tags }}"
-        filters: "{{ db_server_instance_filter }}"
-        exact_count: "{{ num_db_servers }}"
-        detailed_monitoring: "{{ stack_env == 'prod' }}"
-        volumes:
-          - device_name: /dev/sda1
-            ebs:
-              volume_size: 30
-              volume_type: gp3
-              delete_on_termination: true
-      register: ec2_db_server_ec2_instance_result
-      when: provision__db_server
-
-
     - name: Provision the load balancer instance in EC2
       amazon.aws.ec2_instance:
         state: running
         image:
           id: "{{ load_balancer_ami }}"
         region: "{{ load_balancer_region }}"
+        subnet_id: "{{ public_subnet_id | default(omit) }}"
         instance_type: "{{ load_balancer_instance_type }}"
         key_name: "{{ load_balancer_key_name }}"
         security_groups:
-          - sg-052e5c37ecfa0cd7b # Internal
-          - sg-ef6fc897 # default (old)
-          - sg-0354ff7a734f377c3 # lot_commander::load_balancer
-          - sg-3fe45677 # public web server
+          - "{{ aws_security_group__internal }}"
+          - "{{ aws_security_group__default }}"
+          - "{{ aws_security_group__lot_commander_load_balancer }}"
+          - "{{ aws_security_group__public_web_server }}"
         tags: "{{ load_balancer_count_tags }}"
         filters: "{{ load_balancer_instance_filter }}"
         exact_count: 1
@@ -180,12 +140,13 @@
         image:
           id: "{{ manifest_service_ami }}"
         region: "{{ manifest_service_region }}"
+        subnet_id: "{{ public_subnet_id | default(omit) }}"
         instance_type: "{{ manifest_service_instance_type }}"
         key_name: "{{ manifest_service_key_name }}"
         security_groups:
-          - sg-052e5c37ecfa0cd7b # Internal
-          - sg-ef6fc897 # default (old)
-          - sg-07008ab6c9c5dd60b # expresshop_service::manifest
+          - "{{ aws_security_group__internal }}"
+          - "{{ aws_security_group__default }}"
+          - "{{ aws_security_group__expresshop_manifest_service }}"
         tags: "{{ manifest_service_count_tags }}"
         filters: "{{ manifest_service_instance_filter }}"
         exact_count: 1
@@ -200,13 +161,14 @@
         image:
           id: "{{ app_server_ami }}"
         region: "{{ app_server_region }}"
+        subnet_id: "{{ public_subnet_id | default(omit) }}"
         instance_type: "{{ app_server_instance_type }}"
         key_name: "{{ app_server_key_name }}"
         security_groups:
-          - sg-052e5c37ecfa0cd7b # Internal
-          - sg-ef6fc897 # default (old)
-          - sg-0d79155d77efa9078 # EHDB access
-          - sg-091a4954b4f624c04 # lot_commander::app_server
+          - "{{ aws_security_group__internal }}"
+          - "{{ aws_security_group__default }}"
+          - "{{ aws_security_group__mongodb_atlas_access }}"
+          - "{{ aws_security_group__lot_commander_app_server }}"
         tags: "{{ app_server_count_tags }}"
         filters: "{{ app_server_instance_filter }}"
         exact_count: 1
@@ -221,13 +183,14 @@
         image:
           id: "{{ shopify_data_dump_server_ami }}"
         region: "{{ shopify_data_dump_server_region }}"
+        subnet_id: "{{ public_subnet_id | default(omit) }}"
         instance_type: "{{ shopify_data_dump_server_instance_type }}"
         key_name: "{{ shopify_data_dump_server_key_name }}"
         security_groups:
-          - sg-052e5c37ecfa0cd7b # Internal
-          - sg-ef6fc897 # default (old)
-          - sg-0d79155d77efa9078 # EHDB access
-          - sg-04a9528a6686b9905 # outbound web
+          - "{{ aws_security_group__internal }}"
+          - "{{ aws_security_group__default }}"
+          - "{{ aws_security_group__mongodb_atlas_access }}"
+          - "{{ aws_security_group__outbound_web }}"
         tags: "{{ shopify_data_dump_server_count_tags }}"
         filters: "{{ shopify_data_dump_server_instance_filter }}"
         exact_count: 1
@@ -242,12 +205,13 @@
         image:
           id: "{{ shopify_mailchimp_campaigner_server_ami }}"
         region: "{{ shopify_mailchimp_campaigner_server_region }}"
+        subnet_id: "{{ public_subnet_id | default(omit) }}"
         instance_type: "{{ shopify_mailchimp_campaigner_server_instance_type }}"
         key_name: "{{ shopify_mailchimp_campaigner_server_key_name }}"
         security_groups:
-          - sg-052e5c37ecfa0cd7b # Internal
-          - sg-ef6fc897 # default (old)
-          - sg-04a9528a6686b9905 # outbound web
+          - "{{ aws_security_group__internal }}"
+          - "{{ aws_security_group__default }}"
+          - "{{ aws_security_group__outbound_web }}"
         tags: "{{ shopify_mailchimp_campaigner_server_count_tags }}"
         filters: "{{ shopify_mailchimp_campaigner_server_instance_filter }}"
         exact_count: 1
@@ -262,13 +226,14 @@
         image:
           id: "{{ product_data_cache_updater_server_ami }}"
         region: "{{ product_data_cache_updater_server_region }}"
+        subnet_id: "{{ public_subnet_id | default(omit) }}"
         instance_type: "{{ product_data_cache_updater_server_instance_type }}"
         key_name: "{{ product_data_cache_updater_server_key_name }}"
         security_groups:
-          - sg-052e5c37ecfa0cd7b # Internal
-          - sg-ef6fc897 # default (old)
-          - sg-0d79155d77efa9078 # EHDB access
-          - sg-04a9528a6686b9905 # outbound web
+          - "{{ aws_security_group__internal }}"
+          - "{{ aws_security_group__default }}"
+          - "{{ aws_security_group__mongodb_atlas_access }}"
+          - "{{ aws_security_group__outbound_web }}"
         tags: "{{ product_data_cache_updater_server_count_tags }}"
         filters: "{{ product_data_cache_updater_server_instance_filter }}"
         exact_count: 1
@@ -278,22 +243,6 @@
 
     #################################################################################################
     ## Setting facts for later use
-
-    # database facts
-
-    - name: "Setting fact: mongodb_server_deployed"
-      set_fact:
-        mongodb_server_deployed: '{{ ec2_db_server_ec2_instance_result is defined and ec2_db_server_ec2_instance_result.changed }}'
-
-    - name: "Setting fact: db_server_instances (from ec2_instance result)"
-      set_fact:
-        db_server_instances: '{{ ec2_db_server_ec2_instance_result.instances }}'
-      when: ec2_db_server_ec2_instance_result.instances is defined and ec2_db_server_ec2_instance_result.instances[0] is defined
-
-    - name: "Setting fact: db_server_host"
-      set_fact:
-        db_server_host: '{{ db_server_instances[0].private_ip_address }}'
-      when: db_server_instances is defined and db_server_instances[0] is defined
 
     # load balancer facts
 
@@ -359,11 +308,6 @@
       set_fact:
         wait_list: []
 
-    - name: Add db to wait list
-      set_fact:
-        wait_list: "{{ wait_list + db_server_instances }}"
-      when: db_server_instances is defined
-
     - name: Add load balancer to wait list
       set_fact:
         wait_list: "{{ wait_list + load_balancer_instances }}"
@@ -428,21 +372,8 @@
       register: ec2_load_balancer_eip_result
       when: load_balancer_instance_id is defined and load_balancer_instance_id != load_balancer_eip
 
-#     #################################################################################################
-#     ## Adding newly provisioned hosts to inventory
-
-    - name: add db server host(s) to inventory
-      add_host:
-        hostname: "{{ server.public_ip_address }}"
-        ansible_user: ubuntu
-        ansible_ssh_private_key_file: "{{ db_server_key_file }}"
-        groups:
-          - mongo_servers
-      loop: "{{ db_server_instances }}"
-      loop_control:
-        loop_var: server
-        label: "instance: {{ server.instance_id }}, public_dns: {{ server.public_dns_name }}, public_ip: {{ server.public_ip_address }}"
-      when: db_server_instances is defined and server.public_ip_address is defined
+    #################################################################################################
+    ## Adding provisioned hosts to inventory
 
     - name: add load balancer host elastic IP to inventory
       add_host:
@@ -525,13 +456,6 @@
 #
 ###########################################################
 
-- name: Mongo server playbook
-  import_playbook: mongo-server.yml
-  vars:
-    mongodb_bind_ip: 127.0.0.1,{{ hostvars[ groups['control'][0] ].db_server_host }}
-    mongo_server__skip_mongo_setup: "{{ not hostvars[ groups['control'][0] ].mongodb_server_deployed }}"
-  when: configure__db_server
-
 - name: Configure load balancer
   import_playbook: load-balancer.yml
   vars:
@@ -541,7 +465,8 @@
 - name: Application server(s) playbook
   import_playbook: app.yml
   vars:
-    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+    db_atlas: true
+    db_host: "{{ hostvars[ groups['control'][0] ].db_atlas__cluster_url }}"
     manifest_service_location: "{{ hostvars[ groups['control'][0] ].manifest_service_host }}:{{ hostvars[ groups['manifest_service'][0] ].manifest_service__port }}"
   when: configure__app_servers
 
@@ -554,19 +479,22 @@
 - name: Shopify data dump server
   import_playbook: shopify-data-dump-server.yml
   vars:
-    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+    db_atlas: true
+    db_host: "{{ hostvars[ groups['control'][0] ].db_atlas__cluster_url }}"
   when: configure__shopify_data_dump
 
 - name: Shopify mailchimp campaigner server
   import_playbook: shopify-mailchimp-campaigner-server.yml
   vars:
-    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+    db_atlas: true
+    db_host: "{{ hostvars[ groups['control'][0] ].db_atlas__cluster_url }}"
   when: configure__shopify_mailchimp_campaigner
 
 - name: Product data cache updater server
   import_playbook: product-data-cache-updater-server.yml
   vars:
-    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+    db_atlas: true
+    db_host: "{{ hostvars[ groups['control'][0] ].db_atlas__cluster_url }}"
   when: configure__product_data_cache_updater
 
 
