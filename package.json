@@ -1,0 +1,16 @@
+{
+  "name": "mimameith",
+  "version": "5.1.0",
+  "description": "Provisioning and configuration code for the Expresshop technology stack",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitlab.com/wazue/mimameith.git"
+  },
+  "author": "Joshua \"El\" Davis",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://gitlab.com/wazue/mimameith/issues"
+  },
+  "homepage": "https://gitlab.com/wazue/mimameith#readme"
+}

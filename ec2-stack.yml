@@ -7,7 +7,7 @@
 
 
 
-- name: Provision AWS resources
+- name: Provision AWS resources for wholesale-ninjas stack
   hosts: control
   gather_facts: no
   vars:

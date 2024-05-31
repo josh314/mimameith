@@ -1,5 +1,4 @@
 # Replace the values below with real values and move to `extra-vars-client.yml`
-client_handle: xxx
 client_lot_commander__application_repository_version: xxx
 client_lot_commander__node_version: xxx
 

@@ -91,7 +91,17 @@ head -c20 /dev/urandom | base64
 
 This should be done semi-regularly. Note that old sessions will not be valid on servers instantiated with the new secret.
 
+### Extra vars files
+
+This repo includes the files `extra-vars.sample.yml` and `extra-vars-client.sample.yml`. These are sample files showing the schema expected for the files `extra-vars.yml` and `extra-vars-client.yml`. These files are not included in the repo but should be created at the top-level of the repo. They are used to store variables that are not secret but are specific to the particular deployment, including version numbers of the application code and which resources are in need of provisioing and configuration. They are used by the `run.sh` script to load the correct variables for the deployment. In an invocation of `ansible-playbook` they are loaded like so,
+
+```
+ansible-playbook playbook.yml -i hosts.yml --extra-vars=extra_vars.yml
+```
+
 # Playbooks
+
+Below are descriptions of some of the playbooks available in this repo.
 
 ## `clone-mongo.yml`
 
@@ -153,3 +163,26 @@ ansible-playbook ec2-cronbox.yml \
     --vault-password-file password
 ```
 
+# Dependencies
+
+Ample use is made of the roles in:
+
+https://gitlab.com/wazue/expresshop-ansible-roles
+
+This repo should be within the local ansible roles path. Current version dependency is
+
+```
+expresshop-ansible-roles@2.0.0
+```
+
+# Deployment script
+
+The `run.sh` script is a wrapper around the `ansible-playbook` command. It is used to run the `ec2-stack.yml` or `ec2-stack-client.yml` playbooks. Available options are:
+
+```
+--dev,
+--prod,
+--client <client_name>
+```
+
+The `--dev` and `--prod` flags are used to specify the environment, with the development environment being default. The `--client` flag is optional and used to specify the client playbook instead of the house playbook. The script will then run the appropriate playbook with the correct variables.
