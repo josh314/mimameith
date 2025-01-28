@@ -1,0 +1,6 @@
+---
+version: 4.0.1
+
+requires:
+  - {name: 'geerlingguy.nodejs', version: '7.0.0'}
+  - {name: 'mprahl.lets-encrypt-route-53', version: '5.3.0'}
