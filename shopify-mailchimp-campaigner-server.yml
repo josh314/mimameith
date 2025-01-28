@@ -41,6 +41,7 @@
     ####################################################
 
     - name: Set time zone
+      become: yes
       community.general.timezone:
         name: America/New_York
 
