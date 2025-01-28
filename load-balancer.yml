@@ -3,11 +3,6 @@
   become: yes
   vars_files:
     - secrets.yml
-  vars:
-    ssl_cert_dir: /etc/ssl/{{ server_hostname }}
-    ssl_key_file: "{{ server_hostname }}.key"
-    ssl_cert_file: "{{ server_hostname }}.crt"
-    ssl_csr_file: "{{ server_hostname }}.csr"
 
   tasks:
 
@@ -23,21 +18,9 @@
       vars:
         server_name: "{{ server_hostname }}"
         upstream_servers: "{{ server_nodes }}"
-        key_file: "{{ ssl_cert_dir }}/{{ ssl_key_file }}"
-        cert_file: "{{ ssl_cert_dir }}/{{ ssl_cert_file }}"
+        key_file: "/etc/letsencrypt/live/{{ server_hostname }}/privkey.pem"
+        cert_file: "/etc/letsencrypt/live/{{ server_hostname }}/fullchain.pem"
         tls_enabled: true
-
-    # Generate self-signed OpenSSL keys and cert
-    - import_role:
-        name: self_signed_ssl
-      vars:
-        - self_signed_ssl_cert_dir: "{{ ssl_cert_dir }}"
-        - self_signed_ssl_key_file: "{{ ssl_key_file }}"
-        - self_signed_ssl_cert_file: "{{ ssl_cert_file }}"
-        - self_signed_ssl_csr_file: "{{ ssl_csr_file }}"
-        - self_signed_ssl_common_name: "{{ server_hostname }}"
-      when: load_balancer_self_signed_ssl is defined and load_balancer_self_signed_ssl
-
 
     - name: Install pip
       apt:
@@ -49,21 +32,34 @@
           - botocore
           - boto3
 
+    - name: Create parent directories
+      ansible.builtin.file:
+        path: /root/.aws
+        state: directory
+        mode: '0700'
+        owner: root
+
+    - name: Create AWS credentials file for Route 53 access
+      ansible.builtin.copy:
+        dest: "/root/.aws/credentials"
+        content: |
+          [default]
+          aws_access_key_id = {{ aws.credentials.admin.aws_access_key_id }}
+          aws_secret_access_key = {{ aws.credentials.admin.aws_secret_access_key }}
+        owner: root
+        mode: '0600'
+
     # Generate OpenSSL keys and certification with Let's Encrypt
     - import_role:
-        name: mprahl.lets-encrypt-route-53
+        name: thiagoalmeidasa.certbot_route53
       vars:
-        - ler53_cert_common_name: "{{ server_hostname }}"
-        - ler53_route_53_domain: wholesaleninjas.com
-        - ler53_aws_access_key: "{{ aws.credentials.admin.aws_access_key_id }}"
-        - ler53_aws_secret_key: "{{ aws.credentials.admin.aws_secret_access_key }}"
-        - ler53_cert_dir: "{{ ssl_cert_dir }}"
-        - ler53_key_file_name: "{{ ssl_key_file }}"
-        - ler53_cert_file_name: "{{ ssl_cert_file }}"
-        - ler53_csr_file_name: "{{ ssl_csr_file }}"
-        - ler53_account_email: josh314@gmail.com
-        - ler53_account_email: "{{ maintenance_contact_email }}"
-      when: load_balancer_self_signed_ssl is undefined or not load_balancer_self_signed_ssl
+        certbot_admin_email: "{{ maintenance_contact_email }}"
+        certbot_auto_renew_user: root
+        certbot_auto_renew_minute: "20"
+        certbot_auto_renew_hour: "5"
+        certbot_certs:
+          - domains:
+            - "{{ server_hostname }}"
 
     - name: restart nginx
       service: name=nginx state=restarted

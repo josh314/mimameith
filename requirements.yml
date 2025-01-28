@@ -1,6 +1,7 @@
 ---
-version: 4.1.0
+version: 4.2.0
 
 requires:
   - {name: 'geerlingguy.nodejs', version: '7.0.0'}
-  - {name: 'mprahl.lets-encrypt-route-53', version: '5.3.0'}
+  - {name: 'thiagoalmeidasa.certbot_route53', version: '1.1.0'}
+  - {name: 'mprahl.lets-encrypt-route-53', version: '5.3.0'} # still used in load_balancer_client playbook. should be swapped out for `thiagoalmeidasa.certbot_route53` if we return to this project
