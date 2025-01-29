@@ -54,22 +54,6 @@
       tag:org: "{{ org | default('') }}"
       tag:env: "{{ stack_env }}"
 
-    manifest_service_count_tags:
-      Name: manifest-svc
-      tier: service
-      stack: mimameith
-      org: "{{ org | default('') }}"
-      env: "{{ stack_env }}"
-      version: "{{ expresshop_manifest_service__application_repository_version }}"
-    manifest_service_instance_filter:
-      instance-state-name: running
-      tag:Name: manifest-svc
-      tag:tier: service
-      tag:stack: mimameith
-      tag:org: "{{ org | default('') }}"
-      tag:env: "{{ stack_env }}"
-      tag:version: "{{ expresshop_manifest_service__application_repository_version }}"
-
     shopify_data_dump_server_count_tags:
       Name: shopify-data-dump
       tier: database
@@ -172,26 +156,6 @@
         detailed_monitoring: "{{ stack_env == 'prod' }}"
       register: ec2_load_balancer_ec2_instance_result
       when: provision__load_balancer
-
-
-    - name: Provision the manifest service instance(s) in EC2
-      amazon.aws.ec2_instance:
-        state: running
-        image:
-          id: "{{ manifest_service_ami }}"
-        region: "{{ manifest_service_region }}"
-        instance_type: "{{ manifest_service_instance_type }}"
-        key_name: "{{ manifest_service_key_name }}"
-        security_groups:
-          - sg-052e5c37ecfa0cd7b # Internal
-          - sg-ef6fc897 # default (old)
-          - sg-07008ab6c9c5dd60b # expresshop_service::manifest
-        tags: "{{ manifest_service_count_tags }}"
-        filters: "{{ manifest_service_instance_filter }}"
-        exact_count: 1
-        detailed_monitoring: "{{ stack_env == 'prod' }}"
-      register: ec2_manifest_service_ec2_instance_result
-      when: provision__manifest_service
 
 
     - name: Provision the application instance(s) in EC2
@@ -307,18 +271,6 @@
         load_balancer_instance_id: '{{ load_balancer_instances[0].instance_id }}'
       when: load_balancer_instances is defined and load_balancer_instances[0] is defined
 
-    # manifest service facts
-
-    - name: "Setting fact: manifest_service_instances (from ec2_instance result)"
-      set_fact:
-        manifest_service_instances: '{{ ec2_manifest_service_ec2_instance_result.instances }}'
-      when: ec2_manifest_service_ec2_instance_result.instances is defined and ec2_manifest_service_ec2_instance_result.instances[0] is defined
-
-    - name: "Setting fact: manifest_service_host"
-      set_fact:
-        manifest_service_host: '{{ manifest_service_instances[0].private_ip_address }}'
-      when: manifest_service_instances is defined and manifest_service_instances[0] is defined
-
     # app server facts
 
     - name: "Setting fact: app_server_instances (from ec2_instance result)"
@@ -373,11 +325,6 @@
       set_fact:
         wait_list: "{{ wait_list + app_server_instances }}"
       when: app_server_instances is defined
-
-    - name: Add manifest service to wait list
-      set_fact:
-        wait_list: "{{ wait_list + manifest_service_instances }}"
-      when: manifest_service_instances is defined
 
     - name: Add shopify data dump server to wait list
       set_fact:
@@ -466,19 +413,6 @@
         label: "instance: {{ app_server.instance_id }}, public_dns: {{ app_server.public_dns_name }}, public_ip: {{ app_server.public_ip_address }}"
       when: app_server_instances is defined and app_server.public_ip_address is defined
 
-    - name: add manifest service host(s) to inventory
-      add_host:
-        hostname: "{{ server.public_ip_address }}"
-        ansible_user: ubuntu
-        ansible_ssh_private_key_file: "{{ manifest_service_key_file }}"
-        groups:
-          - manifest_service
-      loop: "{{ manifest_service_instances }}"
-      loop_control:
-        loop_var: server
-        label: "instance: {{ server.instance_id }}, public_dns: {{ server.public_dns_name }}, public_ip: {{ server.public_ip_address }}"
-      when: manifest_service_instances is defined and server.public_ip_address is defined
-
     - name: add shopify data dump server host(s) to inventory
       add_host:
         hostname: "{{ server.public_ip_address }}"
@@ -542,14 +476,7 @@
   import_playbook: app.yml
   vars:
     db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
-    manifest_service_location: "{{ hostvars[ groups['control'][0] ].manifest_service_host }}:{{ hostvars[ groups['manifest_service'][0] ].manifest_service__port }}"
   when: configure__app_servers
-
-- name: Manifest service playbook
-  import_playbook: manifest-service.yml
-  vars:
-    expresshop_manifest_service__application_port: "{{ manifest_service__port }}"
-  when: configure__manifest_service
 
 - name: Shopify data dump server
   import_playbook: shopify-data-dump-server.yml
