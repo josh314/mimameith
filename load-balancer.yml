@@ -50,6 +50,7 @@
         mode: '0600'
 
     # Generate OpenSSL keys and certification with Let's Encrypt
+    # Note the --deploy-hook option which restarts nginx after the cert is generated
     - import_role:
         name: thiagoalmeidasa.certbot_route53
       vars:
@@ -57,6 +58,8 @@
         certbot_auto_renew_user: root
         certbot_auto_renew_minute: "20"
         certbot_auto_renew_hour: "5"
+        certbot_auto_renew_options: >-
+          --quiet --no-self-upgrade --dns-route53 --deploy-hook "/bin/systemctl restart nginx"
         certbot_certs:
           - domains:
             - "{{ server_hostname }}"
