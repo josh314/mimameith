@@ -104,9 +104,9 @@
         instance_type: "{{ db_server_instance_type }}"
         key_name: "{{ db_server_key_name }}"
         security_groups:
-          - sg-052e5c37ecfa0cd7b # Internal
-          - sg-ef6fc897 # default (old)
-          - sg-0d2b2f3d26d6fefdc # EHDB
+          - Internal
+          - default
+          - EHDB
         tags: "{{ db_server_count_tags }}"
         filters: "{{ db_server_instance_filter }}"
         exact_count: "{{ num_db_servers }}"
@@ -130,10 +130,10 @@
         instance_type: "{{ load_balancer_instance_type }}"
         key_name: "{{ load_balancer_key_name }}"
         security_groups:
-          - sg-052e5c37ecfa0cd7b # Internal
-          - sg-ef6fc897 # default (old)
-          - sg-0354ff7a734f377c3 # lot_commander::load_balancer
-          - sg-3fe45677 # public web server
+          - Internal
+          - default
+          - lot_commander::load_balancer
+          - public web server
         tags: "{{ load_balancer_count_tags }}"
         filters: "{{ load_balancer_instance_filter }}"
         exact_count: 1
@@ -151,10 +151,10 @@
         instance_type: "{{ app_server_instance_type }}"
         key_name: "{{ app_server_key_name }}"
         security_groups:
-          - sg-052e5c37ecfa0cd7b # Internal
-          - sg-ef6fc897 # default (old)
-          - sg-0d79155d77efa9078 # EHDB access
-          - sg-091a4954b4f624c04 # lot_commander::app_server
+          - Internal
+          - default
+          - EHDB access
+          - lot_commander::app_server
         tags: "{{ app_server_count_tags }}"
         filters: "{{ app_server_instance_filter }}"
         exact_count: 1
@@ -172,10 +172,10 @@
         instance_type: "{{ shopify_data_dump_server_instance_type }}"
         key_name: "{{ shopify_data_dump_server_key_name }}"
         security_groups:
-          - sg-052e5c37ecfa0cd7b # Internal
-          - sg-ef6fc897 # default (old)
-          - sg-0d79155d77efa9078 # EHDB access
-          - sg-04a9528a6686b9905 # outbound web
+          - Internal
+          - default
+          - EHDB access
+          - outbound web
         tags: "{{ shopify_data_dump_server_count_tags }}"
         filters: "{{ shopify_data_dump_server_instance_filter }}"
         exact_count: 1
@@ -193,10 +193,10 @@
         instance_type: "{{ product_data_cache_updater_server_instance_type }}"
         key_name: "{{ product_data_cache_updater_server_key_name }}"
         security_groups:
-          - sg-052e5c37ecfa0cd7b # Internal
-          - sg-ef6fc897 # default (old)
-          - sg-0d79155d77efa9078 # EHDB access
-          - sg-04a9528a6686b9905 # outbound web
+          - Internal
+          - default
+          - EHDB access
+          - outbound web
         tags: "{{ product_data_cache_updater_server_count_tags }}"
         filters: "{{ product_data_cache_updater_server_instance_filter }}"
         exact_count: 1
