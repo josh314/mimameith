@@ -223,6 +223,16 @@
         db_server_host: '{{ db_server_instances[0].private_ip_address }}'
       when: db_server_instances is defined and db_server_instances[0] is defined
 
+    - name: "Setting fact: db_server_instance_id (from ec2_instance result)"
+      set_fact:
+        db_server_instance_id: '{{ ec2_db_server_ec2_instance_result.instances[0].instance_id }}'
+      when: ec2_db_server_ec2_instance_result.instances is defined and ec2_db_server_ec2_instance_result.instances[0] is defined
+
+    - name: "Setting fact: db_server_instance_id"
+      set_fact:
+        db_server_instance_id: '{{ db_server_instances[0].instance_id }}'
+      when: db_server_instances is defined and db_server_instances[0] is defined
+
     # load balancer facts
 
     - name: "Setting fact: load_balancer_instance_id (from ec2_instance result)"
@@ -308,6 +318,7 @@
     #################################################################################################
     ## EC2 level configuration
 
+    # naming app server instances
     - name: Tagging app server instances with a iterated Name tag
       amazon.aws.ec2_tag:
         resource: "{{ app_server.instance_id }}"
@@ -320,28 +331,46 @@
         label: "{{ app_server.instance_id }}"
       when: app_server_instances is defined and app_server.tags.Name is not defined
 
+    # Setting elastic IPs for load balancer and db server
     - name: Associate Elastic IP with load balancer
-      community.aws.ec2_eip:
+      amazon.aws.ec2_eip:
         device_id: "{{ load_balancer_instance_id }}"
         ip: "{{ load_balancer_eip }}"
+        allow_reassociation: true
       register: ec2_load_balancer_eip_result
-      when: load_balancer_instance_id is defined and load_balancer_instance_id != load_balancer_eip
+      when: load_balancer_instance_id is defined
+
+    - name: Associate Elastic IP with db server
+      amazon.aws.ec2_eip:
+        device_id: "{{ db_server_instance_id }}"
+        ip: "{{ db_server_eip }}"
+        allow_reassociation: true
+      register: ec2_db_server_eip_result
+      when: db_server_instance_id is defined
+
+    # internal DNS names in private hosted zone
+    - name: set internal DNS name for db server
+      amazon.aws.route53:
+        state: present
+        zone: wholesaleninjas.com
+        private_zone: true
+        record: "{{ db_server_internal_dns_name }}"
+        type: A
+        value: "{{ db_server_host }}"
+        overwrite: true
+      when: db_server_host is defined
 
 #     #################################################################################################
 #     ## Adding newly provisioned hosts to inventory
 
-    - name: add db server host(s) to inventory
+    - name: add db server host elastic IP to inventory
       add_host:
-        hostname: "{{ server.public_ip_address }}"
+        hostname: "{{ ec2_db_server_eip_result.public_ip }}"
         ansible_user: ubuntu
         ansible_ssh_private_key_file: "{{ db_server_key_file }}"
         groups:
           - mongo_servers
-      loop: "{{ db_server_instances }}"
-      loop_control:
-        loop_var: server
-        label: "instance: {{ server.instance_id }}, public_dns: {{ server.public_dns_name }}, public_ip: {{ server.public_ip_address }}"
-      when: db_server_instances is defined and server.public_ip_address is defined
+      when: ec2_db_server_eip_result.public_ip is defined
 
     - name: add load balancer host elastic IP to inventory
       add_host:
@@ -414,19 +443,19 @@
 - name: Application server(s) playbook
   import_playbook: app.yml
   vars:
-    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+    db_host: "{{ hostvars[ groups['control'][0] ].db_server_internal_dns_name }}"
   when: configure__app_servers
 
 - name: Shopify data dump server
   import_playbook: shopify-data-dump-server.yml
   vars:
-    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+    db_host: "{{ hostvars[ groups['control'][0] ].db_server_internal_dns_name }}"
   when: configure__shopify_data_dump
 
 - name: Product data cache updater server
   import_playbook: product-data-cache-updater-server.yml
   vars:
-    db_host: "{{ hostvars[ groups['control'][0] ].db_server_host }}"
+    db_host: "{{ hostvars[ groups['control'][0] ].db_server_internal_dns_name }}"
   when: configure__product_data_cache_updater
 
 

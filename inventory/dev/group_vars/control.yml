@@ -24,6 +24,9 @@ db_server_key_name: josh-key-pair-useast
 db_server_key_file: ~/.ssh/josh-key-pair-useast.pem
 num_db_servers: 1
 
+db_server_eip: 98.80.0.35
+db_server_internal_dns_name: "dev-ehdb-internal.wholesaleninjas.com"
+
 # AWS instance settings for the load balancer
 load_balancer_ami: ami-09e67e426f25ce0d7 # ubuntu 20.4 LTS
 load_balancer_instance_type: t3.nano
