@@ -54,22 +54,6 @@
       tag:org: "{{ org | default('') }}"
       tag:env: "{{ stack_env }}"
 
-    shopify_data_dump_server_count_tags:
-      Name: shopify-data-dump
-      tier: database
-      stack: mimameith
-      org: "{{ org | default('') }}"
-      env: "{{ stack_env }}"
-      version: "{{ shopify_data_dump__application_repository_version }}"
-    shopify_data_dump_server_instance_filter:
-      instance-state-name: running
-      tag:Name: shopify-data-dump
-      tag:tier: database
-      tag:stack: mimameith
-      tag:org: "{{ org | default('') }}"
-      tag:env: "{{ stack_env }}"
-      tag:version: "{{ shopify_data_dump__application_repository_version }}"
-
     product_data_cache_updater_server_count_tags:
       Name: product-data-cache-updater
       tier: database
@@ -163,27 +147,6 @@
       when: provision__app_servers
 
 
-    - name: Provision the shopify-data-dump instance in EC2
-      amazon.aws.ec2_instance:
-        state: running
-        image:
-          id: "{{ shopify_data_dump_server_ami }}"
-        region: "{{ shopify_data_dump_server_region }}"
-        instance_type: "{{ shopify_data_dump_server_instance_type }}"
-        key_name: "{{ shopify_data_dump_server_key_name }}"
-        security_groups:
-          - Internal
-          - default
-          - EHDB access
-          - outbound web
-        tags: "{{ shopify_data_dump_server_count_tags }}"
-        filters: "{{ shopify_data_dump_server_instance_filter }}"
-        exact_count: 1
-        detailed_monitoring: "{{ stack_env == 'prod' }}"
-      register: ec2_shopify_data_dump_server_ec2_instance_result
-      when: provision__shopify_data_dump
-
-
     - name: Provision the product-data-cache-updater instance in EC2
       amazon.aws.ec2_instance:
         state: running
@@ -257,13 +220,6 @@
         app_server_addresses: '{{ app_server_instances | map(attribute="private_ip_address") | map("regex_replace", "^(.*)$", "\1:80") | list }}'
       when: app_server_instances is defined and app_server_instances[0] is defined
 
-    # shopify data dump facts
-
-    - name: "Setting fact: shopify_data_dump_server_instances (from ec2_instance result)"
-      set_fact:
-        shopify_data_dump_server_instances: '{{ ec2_shopify_data_dump_server_ec2_instance_result.instances }}'
-      when: ec2_shopify_data_dump_server_ec2_instance_result.instances is defined and ec2_shopify_data_dump_server_ec2_instance_result.instances[0] is defined
-
     # product data cache updater facts
 
     - name: "Setting fact: product_data_cache_updater_server_instances (from ec2_instance result)"
@@ -292,11 +248,6 @@
       set_fact:
         wait_list: "{{ wait_list + app_server_instances }}"
       when: app_server_instances is defined
-
-    - name: Add shopify data dump server to wait list
-      set_fact:
-        wait_list: "{{ wait_list + shopify_data_dump_server_instances }}"
-      when: shopify_data_dump_server_instances is defined
 
     - name: Add product data cache updater to wait list
       set_fact:
@@ -394,19 +345,6 @@
         label: "instance: {{ app_server.instance_id }}, public_dns: {{ app_server.public_dns_name }}, public_ip: {{ app_server.public_ip_address }}"
       when: app_server_instances is defined and app_server.public_ip_address is defined
 
-    - name: add shopify data dump server host(s) to inventory
-      add_host:
-        hostname: "{{ server.public_ip_address }}"
-        ansible_user: ubuntu
-        ansible_ssh_private_key_file: "{{ shopify_data_dump_server_key_file }}"
-        groups:
-          - shopify_data_dump
-      loop: "{{ shopify_data_dump_server_instances }}"
-      loop_control:
-        loop_var: server
-        label: "instance: {{ server.instance_id }}, public_dns: {{ server.public_dns_name }}, public_ip: {{ server.public_ip_address }}"
-      when: shopify_data_dump_server_instances is defined and server.public_ip_address is defined
-
     - name: add product data cache updater server host(s) to inventory
       add_host:
         hostname: "{{ server.public_ip_address }}"
@@ -445,12 +383,6 @@
   vars:
     db_host: "{{ hostvars[ groups['control'][0] ].db_server_internal_dns_name }}"
   when: configure__app_servers
-
-- name: Shopify data dump server
-  import_playbook: shopify-data-dump-server.yml
-  vars:
-    db_host: "{{ hostvars[ groups['control'][0] ].db_server_internal_dns_name }}"
-  when: configure__shopify_data_dump
 
 - name: Product data cache updater server
   import_playbook: product-data-cache-updater-server.yml
