@@ -78,13 +78,28 @@
   #
   #####################################################################################
 
+    - name: Find Ubuntu 20.04 LTS AMIs
+      amazon.aws.ec2_ami_info:
+        owners: ['099720109477']  # Canonical's AWS account ID
+        filters:
+          name: "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"
+          architecture: x86_64
+          root-device-type: ebs
+          virtualization-type: hvm
+        region: "{{ aws_region }}"
+      register: ubuntu_amis
+
+    - name: Set new fact of AMI ID to be the most recent Ubuntu AMI
+      set_fact:
+        ami_id: "{{ ( ubuntu_amis.images | sort(attribute='creation_date') | last )['image_id'] }}"
+      when: ubuntu_amis.images | length > 0
 
     - name: Provision the Database instance in EC2
       amazon.aws.ec2_instance:
         state: running
         image:
-          id: "{{ db_server_ami }}"
-        region: "{{ db_server_region }}"
+          id: "{{ ami_id }}"
+        region: "{{ aws_region }}"
         instance_type: "{{ db_server_instance_type }}"
         key_name: "{{ db_server_key_name }}"
         security_groups:
@@ -109,8 +124,8 @@
       amazon.aws.ec2_instance:
         state: running
         image:
-          id: "{{ load_balancer_ami }}"
-        region: "{{ load_balancer_region }}"
+          id: "{{ ami_id }}"
+        region: "{{ aws_region }}"
         instance_type: "{{ load_balancer_instance_type }}"
         key_name: "{{ load_balancer_key_name }}"
         security_groups:
@@ -130,8 +145,8 @@
       amazon.aws.ec2_instance:
         state: running
         image:
-          id: "{{ app_server_ami }}"
-        region: "{{ app_server_region }}"
+          id: "{{ ami_id }}"
+        region: "{{ aws_region }}"
         instance_type: "{{ app_server_instance_type }}"
         key_name: "{{ app_server_key_name }}"
         security_groups:
@@ -151,8 +166,8 @@
       amazon.aws.ec2_instance:
         state: running
         image:
-          id: "{{ product_data_cache_updater_server_ami }}"
-        region: "{{ product_data_cache_updater_server_region }}"
+          id: "{{ ami_id }}"
+        region: "{{ aws_region }}"
         instance_type: "{{ product_data_cache_updater_server_instance_type }}"
         key_name: "{{ product_data_cache_updater_server_key_name }}"
         security_groups:
