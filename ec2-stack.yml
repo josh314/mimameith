@@ -110,6 +110,12 @@
         filters: "{{ db_server_instance_filter }}"
         exact_count: "{{ num_db_servers }}"
         detailed_monitoring: "{{ stack_env == 'prod' }}"
+        metadata_options:
+          http_endpoint: enabled
+          http_protocol_ipv6: enabled
+          http_tokens: required
+          http_put_response_hop_limit: 1
+          instance_metadata_tags: enabled
         volumes:
           - device_name: /dev/sda1
             ebs:
@@ -137,6 +143,12 @@
         filters: "{{ load_balancer_instance_filter }}"
         exact_count: 1
         detailed_monitoring: "{{ stack_env == 'prod' }}"
+        metadata_options:
+          http_endpoint: enabled
+          http_protocol_ipv6: enabled
+          http_tokens: required
+          http_put_response_hop_limit: 1
+          instance_metadata_tags: enabled
       register: ec2_load_balancer_ec2_instance_result
       when: provision__load_balancer
 
@@ -158,6 +170,12 @@
         filters: "{{ app_server_instance_filter }}"
         exact_count: 1
         detailed_monitoring: "{{ stack_env == 'prod' }}"
+        metadata_options:
+          http_endpoint: enabled
+          http_protocol_ipv6: enabled
+          http_tokens: required
+          http_put_response_hop_limit: 1
+          instance_metadata_tags: enabled
       register: ec2_app_server_ec2_instance_result
       when: provision__app_servers
 
@@ -179,6 +197,12 @@
         filters: "{{ product_data_cache_updater_server_instance_filter }}"
         exact_count: 1
         detailed_monitoring: "{{ stack_env == 'prod' }}"
+        metadata_options:
+          http_endpoint: enabled
+          http_protocol_ipv6: enabled
+          http_tokens: required
+          http_put_response_hop_limit: 1
+          instance_metadata_tags: enabled
       register: ec2_product_data_cache_updater_server_ec2_instance_result
       when: provision__product_data_cache_updater
 
