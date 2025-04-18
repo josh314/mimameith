@@ -11,12 +11,14 @@
 #################################
 # Environment & stack settings
 
-# environment name
+# environment-wide settings
 stack_env: prod
 org: wholesale-ninjas
 aws_region: us-east-1
 key_name: josh-key-pair-useast
 key_file: ~/.ssh/josh-key-pair-useast.pem
+ubuntu_version: "20.04"
+mongodb_major_version: "5"
 
 
 # AWS instance settings for the database servers

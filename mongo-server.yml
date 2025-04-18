@@ -17,6 +17,22 @@
 
   tasks:
 
+    # Check for mongo and ubuntu version variables.
+    # Both of these variables are used in the mongo_install_and_config role and this will avoid surprises from falling back to defaults
+
+    - name: Fail if mongo version is undefined
+      fail:
+        msg: "Mongo version undefined. Please set the mongodb_major_version variable."
+      when: mongodb_major_version is not defined
+
+    - name: Fail if ubuntu version is undefined
+      fail:
+        msg: "Ubuntu version undefined. Please set the ubuntu_version_codename variable."
+      when: ubuntu_version_codename is not defined
+
+    - debug:
+        msg: "Mongo version is {{ mongodb_major_version }} and Ubuntu version is {{ ubuntu_version_codename }}"
+
     - name: update apt packages
       apt:
         update-cache: yes
@@ -25,19 +41,24 @@
 
     # Install and configure mongodb
     - import_role:
-        name: mongo_setup
-      # when: not mongo_server__skip_mongo_setup
+        name: mongo_install_and_config
 
-    # - import_role:
-    #     name: shopify_dump_crons
-    #   vars:
-    #     shopify_dump_crons__project_path: "/home/{{ ansible_user }}/cron/shopify-dump"
-    #     shopify_dump_crons__shopify_store_name: "{{ shopify.apps.shopify_data_dump.store_name }}"
-    #     shopify_dump_crons__shopify_api_key: "{{ shopify.apps.shopify_data_dump.api_key }}"
-    #     shopify_dump_crons__shopify_password: "{{ shopify.apps.shopify_data_dump.password }}"
-    #     shopify_dump_crons__mongo_db_name: ehdb
-    #     shopify_dump_crons__mongo_user: "{{ mongodb_app_user }}"
-    #     shopify_dump_crons__mongo_password: "{{ mongodb_app_password }}"
+    # Setup users
+    - import_role:
+        name: mongo_users
+
+    # Restore from S3
+    - name: mongo_s3_restore
+      import_role:
+        name: mongo_s3_restore
+      vars:
+        mongo_s3_restore_db_user: "{{ mongodb_restore_user }}"
+        mongo_s3_restore_db_password: "{{ mongodb_restore_password }}"
+      when: mongo_s3_restore_s3_bucket is defined
+
+    # Setup backup script
+    - import_role:
+        name: mongo_backup_cron
 
     - import_role:
         name: cleanup
