@@ -11,64 +11,27 @@
   hosts: control
   gather_facts: no
   vars:
-
-    app_server_count_tags:
-      tier: app_server
-      stack: lot-commander
-      org: "{{ org | default('') }}"
-      env: "{{ stack_env }}"
-      version: "{{ lot_commander__application_repository_version }}"
-    app_server_instance_filter:
-      instance-state-name: running
-      tag:tier: app_server
-      tag:stack: lot-commander
-      tag:org: "{{ org | default('') }}"
-      tag:env: "{{ stack_env }}"
-      tag:version: "{{ lot_commander__application_repository_version }}"
-
-    load_balancer_count_tags:
-      Name: lot-commander_lb
-      tier: load_balancer
-      stack: lot-commander
-      org: "{{ org | default('') }}"
-      env: "{{ stack_env }}"
-    load_balancer_instance_filter:
-      instance-state-name: running
-      tag:Name: lot-commander_lb
-      tag:tier: load_balancer
-      tag:stack: lot-commander
-      tag:org: "{{ org | default('') }}"
-      tag:env: "{{ stack_env }}"
-
-    db_server_count_tags:
-      Name: mongodb-server
-      tier: database
-      stack: mimameith
-      org: "{{ org | default('') }}"
-      env: "{{ stack_env }}"
-    db_server_instance_filter:
-      instance-state-name: running
-      tag:Name: mongodb-server
-      tag:tier: database
-      tag:stack: mimameith
-      tag:org: "{{ org | default('') }}"
-      tag:env: "{{ stack_env }}"
-
-    product_data_cache_updater_server_count_tags:
-      Name: product-data-cache-updater
-      tier: database
-      stack: mimameith
-      org: "{{ org | default('') }}"
-      env: "{{ stack_env }}"
-      version: "{{ product_data_cache_updater__application_repository_version }}"
-    product_data_cache_updater_server_instance_filter:
-      instance-state-name: running
-      tag:Name: product-data-cache-updater
-      tag:tier: database
-      tag:stack: mimameith
-      tag:org: "{{ org | default('') }}"
-      tag:env: "{{ stack_env }}"
-      tag:version: "{{ product_data_cache_updater__application_repository_version }}"
+    default_org: "{{ org | default('') }}"
+    instance_meta:
+      - id: app_server
+        tier: app_server
+        stack: lot-commander
+        version_var: "{{ lot_commander__application_repository_version }}"
+      - id: load_balancer
+        tier: load_balancer
+        stack: lot-commander
+        name: lot-commander_lb
+      - id: db_server
+        tier: database
+        stack: mimameith
+        name: mongodb-server
+        extra_tags:
+          mongo_ver: "{{ mongodb_major_version }}"
+      - id: product_data_cache_updater_server
+        tier: database
+        stack: mimameith
+        name: product-data-cache-updater
+        version_var: "{{ product_data_cache_updater__application_repository_version }}"
 
   tasks:
 
@@ -93,6 +56,55 @@
       set_fact:
         ami_id: "{{ ( ubuntu_amis.images | sort(attribute='creation_date') | last )['image_id'] }}"
       when: ubuntu_amis.images | length > 0
+
+
+  #####################################################################################
+  # Set EC2 instance metadata
+  # =========================
+  #
+  #####################################################################################
+
+    - name: Generate count_tags and instance_filter for all instances
+      set_fact:
+        "{{ item.id }}_count_tags": >-
+          {{
+            {
+              'tier': item.tier,
+              'stack': item.stack,
+              'org': default_org,
+              'env': stack_env
+            }
+            | combine(
+                item.name is defined | ternary({ 'Name': item.name }, {})
+              )
+            | combine(
+                item.version_var is defined | ternary({ 'version': item.version_var }, {})
+              )
+            | combine( item.extra_tags | default({}) )
+          }}
+        "{{ item.id }}_instance_filter": >-
+          {{
+            {
+              'instance-state-name': 'running',
+              'tag:tier': item.tier,
+              'tag:stack': item.stack,
+              'tag:org': default_org,
+              'tag:env': stack_env
+            }
+            | combine(
+                item.name is defined | ternary({ 'tag:Name': item.name }, {})
+              )
+            | combine(
+                item.version_var is defined | ternary({ 'tag:version': item.version_var }, {})
+              )
+          }}
+      loop: "{{ instance_meta }}"
+
+  #####################################################################################
+  # EC2 provisioning and configuration
+  # ==================================
+  #
+  #####################################################################################
 
     - name: Provision the Database instance in EC2
       amazon.aws.ec2_instance:
@@ -350,8 +362,8 @@
         overwrite: true
       when: db_server_host is defined
 
-#     #################################################################################################
-#     ## Adding newly provisioned hosts to inventory
+    #################################################################################################
+    ## Adding newly provisioned hosts to inventory
 
     - name: add db server host elastic IP to inventory
       add_host:
@@ -428,10 +440,3 @@
   vars:
     db_host: "{{ hostvars[ groups['control'][0] ].db_server_internal_dns_name }}"
   when: configure__product_data_cache_updater
-
-
-###########################################################
-# Set update crons
-# ================
-# Set at staggered intervals so reboots happen in correct order
-###########################################################
