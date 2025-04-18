@@ -192,7 +192,7 @@
           - Internal
           - default
           - EHDB access
-          - outbound web
+          - outbound-web
         tags: "{{ product_data_cache_updater_server_count_tags }}"
         filters: "{{ product_data_cache_updater_server_instance_filter }}"
         exact_count: 1
