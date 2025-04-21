@@ -1,7 +1,7 @@
 - name: launch client-lot-commander app-server for client `{{ client_handle }}`
   hosts: client_app_servers
   vars_files:
-    - secrets.yml
+    - ../secrets.yml
   vars:
     client_lot_commander__application_repository_version: master
     app_port: 9000

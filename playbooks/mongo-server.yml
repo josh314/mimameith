@@ -2,7 +2,7 @@
   hosts: mongo_servers
   become: yes
   vars_files:
-    - secrets.yml
+    - ../secrets.yml
   vars:
     mongodb_admin_user: "{{ db.auth.admin.user }}"
     mongodb_admin_password: "{{ db.auth.admin.password }}"

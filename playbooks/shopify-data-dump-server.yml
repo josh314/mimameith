@@ -1,7 +1,7 @@
 - name: configure shopify dump cron server
   hosts: shopify_data_dump
   vars_files:
-    - secrets.yml
+    - ../secrets.yml
   vars:
     shopify_data_dump__application_repository_version: production
     path: "{{ ansible_env.HOME }}/shopify-data-dump"

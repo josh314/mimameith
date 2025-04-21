@@ -1,4 +1,4 @@
-ansible-playbook ec2-stack-client.yml \
+ansible-playbook playbooks/ec2-stack-client.yml \
     -i inventory/dev/hosts \
     --vault-password-file password \
     --verbose \

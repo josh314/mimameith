@@ -10,5 +10,4 @@ password
 unsafe*
 
 # deploy script versioning vars
-extra-vars.yml
-extra-vars-client.yml
+extra-vars*.yml

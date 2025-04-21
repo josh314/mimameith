@@ -2,7 +2,7 @@
   hosts: client_load_balancer
   become: yes
   vars_files:
-    - secrets.yml
+    - ../secrets.yml
   vars:
     ssl_cert_dir: /etc/ssl/{{ server_hostname }}
     ssl_key_file: "{{ server_hostname }}.key"

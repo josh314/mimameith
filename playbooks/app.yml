@@ -1,7 +1,7 @@
 - name: launch lot-commander app-server
   hosts: app_servers
   vars_files:
-    - secrets.yml
+    - ../secrets.yml
   vars:
     lot_commander__application_repository_version: master
     app_port: 9000

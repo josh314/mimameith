@@ -2,7 +2,7 @@
   hosts: cronbox
   become: yes
   vars_files:
-    - secrets.yml
+    - ../secrets.yml
   tasks:
 
     - name: update apt packages
