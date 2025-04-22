@@ -17,34 +17,32 @@ org: wholesale-ninjas
 aws_region: us-east-1
 key_name: josh-key-pair-useast
 key_file: ~/.ssh/josh-key-pair-useast.pem
-ubuntu_version: "20.04"
-mongodb_major_version: "5"
 
 
 # AWS instance settings for the database servers
-db_server_instance_type: t3.small
+db_server_instance_type: t3a.small
 db_server_key_name: "{{ key_name }}"
 db_server_key_file: "{{ key_file }}"
 num_db_servers: 1
 
 db_server_eip: 98.80.0.35
-db_server_internal_dns_name: "dev-ehdb-internal.wholesaleninjas.com"
+db_server_internal_dns_name: dev-ehdb-internal.{{ hosted_zone }}
 
 # AWS instance settings for the load balancer
-load_balancer_instance_type: t3.nano
+load_balancer_instance_type: t3a.nano
 load_balancer_key_name: "{{ key_name }}"
 load_balancer_key_file: "{{ key_file }}"
 
 load_balancer_eip: 34.194.49.225
 
 # AWS instance settings for the application servers
-app_server_instance_type: t3.micro
+app_server_instance_type: t3a.micro
 app_server_key_name: "{{ key_name }}"
 app_server_key_file: "{{ key_file }}"
 num_app_servers: 1
 
 # AWS instance settings for the product_data_cache_updater server
-product_data_cache_updater_server_instance_type: t3.nano
+product_data_cache_updater_server_instance_type: t3a.nano
 product_data_cache_updater_server_key_name: "{{ key_name }}"
 product_data_cache_updater_server_key_file: "{{ key_file }}"
 num_product_data_cache_updater_server: 1
@@ -53,14 +51,14 @@ num_product_data_cache_updater_server: 1
 
 # AWS instance settings for the load balancer
 client_load_balancer_ami: ami-09e67e426f25ce0d7 # ubuntu 20.4 LTS
-client_load_balancer_instance_type: t3.nano
+client_load_balancer_instance_type: t3a.nano
 client_load_balancer_region: us-east-1
 client_load_balancer_key_name: "{{ key_name }}"
 client_load_balancer_key_file: "{{ key_file }}"
 
 # AWS instance settings for the application servers
 client_app_server_ami: ami-09e67e426f25ce0d7 # ubuntu 20.4 LTS
-client_app_server_instance_type: t3.micro
+client_app_server_instance_type: t3a.micro
 client_app_server_region: us-east-1
 client_app_server_key_name: "{{ key_name }}"
 client_app_server_key_file: "{{ key_file }}"

@@ -1,0 +1,27 @@
+- name: Tagging app server instances with Name tag
+  amazon.aws.ec2_tag:
+    resource: "{{ app_server.instance_id }}"
+    tags:
+      Name: "lot-commander_{{idx}}"
+
+- name: Get app server attached volumes
+  amazon.aws.ec2_vol_info:
+    region: "{{ aws_region }}"
+    filters:
+      attachment.instance-id: "{{ app_server.instance_id }}"
+  register: attached_volumes
+
+- name: Set fact for volume ID
+  set_fact:
+    app_server_volume_id: >-
+      {{
+        (attached_volumes.volumes | selectattr('attachment_set.0.device', 'equalto', '/dev/sda1') | list)[0].id
+      }}
+  when: attached_volumes.volumes | length > 0
+
+- name: Tagging app server attached volume with Name tag
+  amazon.aws.ec2_tag:
+    region: "{{ aws_region }}"
+    resource: "{{ app_server_volume_id }}"
+    tags:
+      Name: "lot-commander_{{idx}}"

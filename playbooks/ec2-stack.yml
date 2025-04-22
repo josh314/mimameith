@@ -36,6 +36,20 @@
   tasks:
 
   #####################################################################################
+  # Sanity checks
+  # ===============================
+  #
+  #####################################################################################
+
+    - name: Fail if MongoDB version is too old for the Ubuntu version
+      fail:
+        msg: >-
+          MongoDB {{ mongodb_major_version }} is not supported on Ubuntu {{ ubuntu_version }}.
+      when: >
+        (mongodb_major_version | int < 6 and ubuntu_version == '22.04') or
+        (mongodb_major_version | int < 8 and ubuntu_version == '24.04')
+
+  #####################################################################################
   # Set Ubuntu version and find AMI
   # ===============================
   #
@@ -72,7 +86,7 @@
         ami_name_filter: "{{ ubuntu_version_info[ubuntu_version_str].name_filter }}"
       when: ubuntu_version_info[ubuntu_version_str] is defined
 
-    - name: Fail if version unsupported
+    - name: Fail if Ubuntu version unsupported
       fail:
         msg: "Unsupported ubuntu_version '{{ ubuntu_version }}' (normalized: '{{ ubuntu_version_str }}')"
       when: ubuntu_version_info[ubuntu_version_str] is not defined
@@ -99,10 +113,6 @@
   # =========================
   #
   #####################################################################################
-
-    - name: Set new fact of OS name
-      set_fact:
-        os_name: ubuntu-{{ ubuntu_version }}
 
     - name: Generate count_tags and instance_filter for all instances
       set_fact:
@@ -172,7 +182,7 @@
         volumes:
           - device_name: /dev/sda1
             ebs:
-              volume_size: 30
+              volume_size: 8
               volume_type: gp3
               delete_on_termination: true
       register: ec2_db_server_ec2_instance_result
@@ -202,6 +212,12 @@
           http_tokens: required
           http_put_response_hop_limit: 1
           instance_metadata_tags: enabled
+        volumes:
+          - device_name: /dev/sda1
+            ebs:
+              volume_size: 8
+              volume_type: gp3
+              delete_on_termination: true
       register: ec2_load_balancer_ec2_instance_result
       when: provision__load_balancer
 
@@ -221,7 +237,7 @@
           - lot_commander::app_server
         tags: "{{ app_server_count_tags }}"
         filters: "{{ app_server_instance_filter }}"
-        exact_count: 1
+        exact_count: "{{ num_app_servers }}"
         detailed_monitoring: "{{ stack_env == 'prod' }}"
         metadata_options:
           http_endpoint: enabled
@@ -229,6 +245,12 @@
           http_tokens: required
           http_put_response_hop_limit: 1
           instance_metadata_tags: enabled
+        volumes:
+          - device_name: /dev/sda1
+            ebs:
+              volume_size: 8
+              volume_type: gp3
+              delete_on_termination: true
       register: ec2_app_server_ec2_instance_result
       when: provision__app_servers
 
@@ -256,6 +278,12 @@
           http_tokens: required
           http_put_response_hop_limit: 1
           instance_metadata_tags: enabled
+        volumes:
+          - device_name: /dev/sda1
+            ebs:
+              volume_size: 8
+              volume_type: gp3
+              delete_on_termination: true
       register: ec2_product_data_cache_updater_server_ec2_instance_result
       when: provision__product_data_cache_updater
 
@@ -362,11 +390,9 @@
     ## EC2 level configuration
 
     # naming app server instances
-    - name: Tagging app server instances with a iterated Name tag
-      amazon.aws.ec2_tag:
-        resource: "{{ app_server.instance_id }}"
-        tags:
-          Name: "lot-commander_{{idx}}"
+    # this pattern of including a separate file is needed in order to loop over multiple tasks
+    - name: Tagging app server resources with an iterated Name tag
+      include_tasks: app_server_name_tasks.yml
       loop: "{{ app_server_instances }}"
       loop_control:
         loop_var: app_server
@@ -381,7 +407,7 @@
         ip: "{{ load_balancer_eip }}"
         allow_reassociation: true
       register: ec2_load_balancer_eip_result
-      when: load_balancer_instance_id is defined
+      when: load_balancer_instance_id is defined and load_balancer_eip is defined
 
     - name: Associate Elastic IP with db server
       amazon.aws.ec2_eip:
@@ -389,7 +415,7 @@
         ip: "{{ db_server_eip }}"
         allow_reassociation: true
       register: ec2_db_server_eip_result
-      when: db_server_instance_id is defined
+      when: db_server_instance_id is defined and db_server_eip is defined
 
     # internal DNS names in private hosted zone
     - name: set internal DNS name for db server
