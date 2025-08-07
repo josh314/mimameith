@@ -31,7 +31,7 @@
         name: nginx
       become: yes
       vars:
-        server_name: "{{client_handle}}.lot-commander.wholesaleninjas.com"
+        server_name: "{{client_handle}}.lot-commander.{{ hosted_zone }}"
         tls_enabled: false
         upstream_servers:
           - localhost:{{ app_port }}

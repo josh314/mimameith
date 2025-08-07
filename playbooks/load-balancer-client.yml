@@ -54,7 +54,7 @@
         name: mprahl.lets-encrypt-route-53
       vars:
         - ler53_cert_common_name: "{{ server_hostname }}"
-        - ler53_route_53_domain: wholesaleninjas.com
+        - ler53_route_53_domain: "{{ hosted_zone }}"
         - ler53_aws_access_key: "{{ aws.credentials.admin.aws_access_key_id }}"
         - ler53_aws_secret_key: "{{ aws.credentials.admin.aws_secret_access_key }}"
         - ler53_cert_dir: "{{ ssl_cert_dir }}"

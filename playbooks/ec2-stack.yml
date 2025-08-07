@@ -49,6 +49,26 @@
         (mongodb_major_version | int < 6 and ubuntu_version == '22.04') or
         (mongodb_major_version | int < 8 and ubuntu_version == '24.04')
 
+    - name: check if elastic IPs are defined
+      fail:
+        msg: "Elastic IPs for db_server_eip and load_balancer_eip must be defined in extra-vars.yml"
+      when: (db_server_eip is not defined or db_server_eip == '') or (load_balancer_eip is not defined or load_balancer_eip == '')
+
+    - name: retrieve all allocated EIP addresses
+      amazon.aws.ec2_eip_info:
+        region: "{{ aws_region }}"
+        filters:
+          tag:env: "{{ stack_env }}"
+      register: allocated_eips
+
+    - name: Fail if the elastic IPs are not allocated and tagged for the current environment ({{ stack_env}})
+      fail:
+        msg: "Elastic IP {{ item }} is not allocated in AWS with the environment tag `{{ stack_env }}`. Please allocate and tag it before running this playbook."
+      when: item not in allocated_eips.addresses | map(attribute='public_ip') | list
+      loop:
+        - "{{ db_server_eip }}"
+        - "{{ load_balancer_eip }}"
+
   #####################################################################################
   # Set Ubuntu version and find AMI
   # ===============================
@@ -301,9 +321,14 @@
         db_server_instances: '{{ ec2_db_server_ec2_instance_result.instances }}'
       when: ec2_db_server_ec2_instance_result.instances is defined and ec2_db_server_ec2_instance_result.instances[0] is defined
 
-    - name: "Setting fact: db_server_host"
+    - name: "Setting fact: db_server_private_ip"
       set_fact:
-        db_server_host: '{{ db_server_instances[0].private_ip_address }}'
+        db_server_private_ip: '{{ db_server_instances[0].private_ip_address }}'
+      when: db_server_instances is defined and db_server_instances[0] is defined
+
+    - name: "Setting fact: db_server_public_ip"
+      set_fact:
+        db_server_public_ip: '{{ db_server_instances[0].public_ip_address }}'
       when: db_server_instances is defined and db_server_instances[0] is defined
 
     - name: "Setting fact: db_server_instance_id (from ec2_instance result)"
@@ -317,6 +342,16 @@
       when: db_server_instances is defined and db_server_instances[0] is defined
 
     # load balancer facts
+
+    - name: "Setting fact: load_balancer_instances (from ec2_instance result)"
+      set_fact:
+        load_balancer_instances: '{{ ec2_load_balancer_ec2_instance_result.instances }}'
+      when: ec2_load_balancer_ec2_instance_result.instances is defined and ec2_load_balancer_ec2_instance_result.instances[0] is defined
+
+    - name: "Setting fact: load_balancer_public_ip"
+      set_fact:
+        load_balancer_public_ip: '{{ load_balancer_instances[0].public_ip_address }}'
+      when: load_balancer_instances is defined and load_balancer_instances[0] is defined
 
     - name: "Setting fact: load_balancer_instance_id (from ec2_instance result)"
       set_fact:
@@ -417,38 +452,56 @@
       register: ec2_db_server_eip_result
       when: db_server_instance_id is defined and db_server_eip is defined
 
-    # internal DNS names in private hosted zone
+    #################################################################################################
+    ## DNS
+
     - name: set internal DNS name for db server
       amazon.aws.route53:
         state: present
-        zone: wholesaleninjas.com
+        zone: "{{ hosted_zone }}"
         private_zone: true
-        record: "{{ db_server_internal_dns_name }}"
+        record: "{{ db_server_private_hostname }}"
         type: A
-        value: "{{ db_server_host }}"
+        value: "{{ db_server_private_ip }}"
         overwrite: true
-      when: db_server_host is defined
+      when: db_server_private_ip is defined
+
+    - name: set public DNS name for db server
+      amazon.aws.route53:
+        state: present
+        zone: "{{ hosted_zone }}"
+        record: "{{ db_server_public_hostname }}"
+        type: A
+        value: "{{ db_server_eip }}"
+        overwrite: true
+
+    - name: set public DNS name for load balancer
+      amazon.aws.route53:
+        state: present
+        zone: "{{ hosted_zone }}"
+        record: "{{ load_balancer_hostname }}"
+        type: A
+        value: "{{ load_balancer_eip }}"
+        overwrite: true
 
     #################################################################################################
     ## Adding newly provisioned hosts to inventory
 
-    - name: add db server host elastic IP to inventory
+    - name: add database EIP to inventory
       add_host:
-        hostname: "{{ ec2_db_server_eip_result.public_ip }}"
+        hostname: "{{ db_server_eip }}"
         ansible_user: ubuntu
         ansible_ssh_private_key_file: "{{ db_server_key_file }}"
         groups:
           - mongo_servers
-      when: ec2_db_server_eip_result.public_ip is defined
 
-    - name: add load balancer host elastic IP to inventory
+    - name: add load balancer EIP to inventory
       add_host:
-        hostname: "{{ ec2_load_balancer_eip_result.public_ip }}"
+        hostname: "{{ load_balancer_eip }}"
         ansible_user: ubuntu
         ansible_ssh_private_key_file: "{{ load_balancer_key_file }}"
         groups:
           - load_balancer
-      when: ec2_load_balancer_eip_result.public_ip is defined
 
     - name: add app server host(s) to inventory
       add_host:
@@ -489,22 +542,24 @@
     mongodb_major_version: "{{ hostvars[ groups['control'][0] ].mongodb_major_version }}"
     ubuntu_version_codename: "{{ hostvars[ groups['control'][0] ].ubuntu_version_codename }}"
     mongo_server__skip_mongo_setup: "{{ not hostvars[ groups['control'][0] ].mongodb_server_deployed }}"
+    mongo_skip_s3_backups: "{{ hostvars[ groups['control'][0] ].mongo_skip_s3_backups | default(false) }}"
   when: configure__db_server
 
 - name: Configure load balancer
   import_playbook: load-balancer.yml
   vars:
+    server_hostname: "{{ hostvars[ groups['control'][0] ].load_balancer_hostname }}"
     server_nodes: "{{ hostvars[ groups['control'][0] ].app_server_addresses }}"
   when: configure__load_balancer
 
 - name: Application server(s) playbook
   import_playbook: app.yml
   vars:
-    db_host: "{{ hostvars[ groups['control'][0] ].db_server_internal_dns_name }}"
+    db_host: "{{ hostvars[ groups['control'][0] ].db_server_private_hostname }}"
   when: configure__app_servers
 
 - name: Product data cache updater server
   import_playbook: product-data-cache-updater-server.yml
   vars:
-    db_host: "{{ hostvars[ groups['control'][0] ].db_server_internal_dns_name }}"
+    db_host: "{{ hostvars[ groups['control'][0] ].db_server_private_hostname }}"
   when: configure__product_data_cache_updater

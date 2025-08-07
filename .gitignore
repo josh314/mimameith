@@ -9,5 +9,9 @@ sample/
 password
 unsafe*
 
+#
+__*
+
+
 # deploy script versioning vars
 extra-vars*.yml

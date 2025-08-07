@@ -20,20 +20,19 @@ key_file: ~/.ssh/josh-key-pair-useast.pem
 
 
 # AWS instance settings for the database servers
-db_server_instance_type: t3a.small
+db_server_instance_type: t3a.micro
 db_server_key_name: "{{ key_name }}"
 db_server_key_file: "{{ key_file }}"
 num_db_servers: 1
-
-db_server_eip: 98.80.0.35
-db_server_internal_dns_name: dev-ehdb-internal.{{ hosted_zone }}
+db_server_public_hostname: dev-ehdb.{{ hosted_zone }}
+db_server_private_hostname: dev-ehdb-internal.{{ hosted_zone }}
+mongo_skip_s3_backups: true
 
 # AWS instance settings for the load balancer
 load_balancer_instance_type: t3a.nano
 load_balancer_key_name: "{{ key_name }}"
 load_balancer_key_file: "{{ key_file }}"
-
-load_balancer_eip: 34.194.49.225
+load_balancer_hostname: dev-lot-commander.{{ hosted_zone }}
 
 # AWS instance settings for the application servers
 app_server_instance_type: t3a.micro

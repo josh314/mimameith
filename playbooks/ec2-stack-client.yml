@@ -141,7 +141,7 @@
 
     - name: "Setting fact: client_load_balancer_server_hostname"
       set_fact:
-        client_load_balancer_server_hostname:  "{% if stack_env == 'dev' %}dev.{% endif %}{{ client_handle }}.lot-commander.wholesaleninjas.com"
+        client_load_balancer_server_hostname:  "{% if stack_env == 'dev' %}dev.{% endif %}{{ client_handle }}.lot-commander.{{ hosted_zone }}"
 
     # app server facts
 
