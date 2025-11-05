@@ -17,16 +17,20 @@
         tier: app_server
         stack: lot-commander
         version_var: "{{ lot_commander__application_repository_version }}"
+        ubuntu_version: "{{ ubuntu_versions.app_server }}"
       - id: load_balancer
         tier: load_balancer
         stack: lot-commander
         name: lot-commander_lb
+        ubuntu_version: "{{ ubuntu_versions.load_balancer }}"
       - id: db_server
         tier: database
         stack: mimameith
         name: mongodb-server
+        ubuntu_version: "{{ ubuntu_versions.db_server }}"
         extra_tags:
           mongo_ver: "{{ mongodb_major_version }}"
+    ami_ids: {}
 
   tasks:
 
@@ -39,10 +43,10 @@
     - name: Fail if MongoDB version is too old for the Ubuntu version
       fail:
         msg: >-
-          MongoDB {{ mongodb_major_version }} is not supported on Ubuntu {{ ubuntu_version }}.
+          MongoDB {{ mongodb_major_version }} is not supported on Ubuntu {{ ubuntu_versions.db_server }}.
       when: >
-        (mongodb_major_version | int < 6 and ubuntu_version == '22.04') or
-        (mongodb_major_version | int < 8 and ubuntu_version == '24.04')
+        (mongodb_major_version | int < 6 and ubuntu_versions.db_server == '22.04') or
+        (mongodb_major_version | int < 8 and ubuntu_versions.db_server == '24.04')
 
     - name: check if elastic IPs are defined
       fail:
@@ -70,14 +74,21 @@
   #
   #####################################################################################
 
-    - name: Set default Ubuntu version if not defined
+    - name: Define Ubuntu version info map
       set_fact:
-        ubuntu_version: "20.04"
-      when: ubuntu_version is not defined
-
-    - name: Normalize ubuntu_version as string with 2 decimal places
-      set_fact:
-        ubuntu_version_str: "{{ '%.2f' | format(ubuntu_version | float) }}"
+        ubuntu_version_info:
+          "18.04":
+            codename: "bionic"
+            name_filter: "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"
+          "20.04":
+            codename: "focal"
+            name_filter: "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"
+          "22.04":
+            codename: "jammy"
+            name_filter: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+          "24.04":
+            codename: "noble"
+            name_filter: "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
 
     - name: Define Ubuntu version info map
       set_fact:
@@ -95,33 +106,16 @@
             codename: "noble"
             name_filter: "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
 
-    - name: Set ubuntu_version_codename and ami_name_filter from version map
+
+    - name: Set db_server_ubuntu_version_codename
       set_fact:
-        ubuntu_version_codename: "{{ ubuntu_version_info[ubuntu_version_str].codename }}"
-        ami_name_filter: "{{ ubuntu_version_info[ubuntu_version_str].name_filter }}"
-      when: ubuntu_version_info[ubuntu_version_str] is defined
+        db_server_ubuntu_version_codename: "{{ ubuntu_version_info[ubuntu_versions.db_server].codename }}"
 
-    - name: Fail if Ubuntu version unsupported
-      fail:
-        msg: "Unsupported ubuntu_version '{{ ubuntu_version }}' (normalized: '{{ ubuntu_version_str }}')"
-      when: ubuntu_version_info[ubuntu_version_str] is not defined
-
-    - name: Find Ubuntu {{ ubuntu_version }} LTS AMIs
-      amazon.aws.ec2_ami_info:
-        owners: ['099720109477']  # Canonical's AWS account ID
-        filters:
-          name: "{{ ami_name_filter }}"
-          architecture: x86_64
-          root-device-type: ebs
-          virtualization-type: hvm
-        region: "{{ aws_region }}"
-      register: ubuntu_amis
-
-    - name: Set new fact of AMI ID to be the most recent Ubuntu AMI
-      set_fact:
-        ami_id: "{{ ( ubuntu_amis.images | sort(attribute='creation_date') | last )['image_id'] }}"
-      when: ubuntu_amis.images | length > 0
-
+    - name: build ami_ids dict
+      include_tasks: build-ubuntu-ami-ids.yml
+      loop: "{{ ubuntu_versions | dict2items( key_name='server', value_name='version' ) }}"
+      loop_control:
+        loop_var: ubuntu_version_item
 
   #####################################################################################
   # Set EC2 instance metadata
@@ -142,7 +136,7 @@
             | combine(
                 item.name is defined | ternary({ 'Name': item.name }, {})
               )
-            | combine( { 'os': "ubuntu-{{ ubuntu_version }}" } )
+            | combine( { 'os': "ubuntu-" ~ item.ubuntu_version } )
             | combine(
                 item.version_var is defined | ternary({ 'version': item.version_var }, {})
               )
@@ -166,6 +160,9 @@
           }}
       loop: "{{ instance_meta }}"
 
+    - debug:
+        msg: db_server_count_tags
+
   #####################################################################################
   # EC2 provisioning and configuration
   # ==================================
@@ -176,7 +173,7 @@
       amazon.aws.ec2_instance:
         state: running
         image:
-          id: "{{ ami_id }}"
+          id: "{{ ami_ids.db_server }}"
         region: "{{ aws_region }}"
         instance_type: "{{ db_server_instance_type }}"
         key_name: "{{ db_server_key_name }}"
@@ -208,7 +205,7 @@
       amazon.aws.ec2_instance:
         state: running
         image:
-          id: "{{ ami_id }}"
+          id: "{{ ami_ids.load_balancer }}"
         region: "{{ aws_region }}"
         instance_type: "{{ load_balancer_instance_type }}"
         key_name: "{{ load_balancer_key_name }}"
@@ -241,7 +238,7 @@
       amazon.aws.ec2_instance:
         state: running
         image:
-          id: "{{ ami_id }}"
+          id: "{{ ami_ids.app_server }}"
         region: "{{ aws_region }}"
         instance_type: "{{ app_server_instance_type }}"
         key_name: "{{ app_server_key_name }}"
@@ -478,7 +475,7 @@
   import_playbook: mongo-server.yml
   vars:
     mongodb_major_version: "{{ hostvars[ groups['control'][0] ].mongodb_major_version }}"
-    ubuntu_version_codename: "{{ hostvars[ groups['control'][0] ].ubuntu_version_codename }}"
+    ubuntu_version_codename: "{{ hostvars[ groups['control'][0] ].db_server_ubuntu_version_codename }}"
     mongo_server__skip_mongo_setup: "{{ not hostvars[ groups['control'][0] ].mongodb_server_deployed }}"
     mongo_skip_s3_backups: "{{ hostvars[ groups['control'][0] ].mongo_skip_s3_backups | default(false) }}"
   when: configure__db_server

@@ -6,7 +6,6 @@
 # These variables are needed by multiple hosts
 ################################################
 
-ubuntu_version: "20.04"
 mongodb_major_version: "5"
 hosted_zone: wholesaleninjas.com
 

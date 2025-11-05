@@ -11,6 +11,11 @@
 #################################
 # Environment & stack settings
 
+ubuntu_versions:
+  db_server: "20.04"
+  load_balancer: "22.04"
+  app_server: "22.04"
+
 # environment-wide settings
 stack_env: dev
 org: wholesale-ninjas
