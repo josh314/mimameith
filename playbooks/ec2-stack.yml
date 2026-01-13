@@ -131,12 +131,12 @@
               'tier': item.tier,
               'stack': item.stack,
               'org': default_org,
-              'env': stack_env
+              'env': stack_env,
+              'os': "ubuntu-" ~ item.ubuntu_version
             }
             | combine(
                 item.name is defined | ternary({ 'Name': item.name }, {})
               )
-            | combine( { 'os': "ubuntu-" ~ item.ubuntu_version } )
             | combine(
                 item.version_var is defined | ternary({ 'version': item.version_var }, {})
               )
@@ -149,7 +149,8 @@
               'tag:tier': item.tier,
               'tag:stack': item.stack,
               'tag:org': default_org,
-              'tag:env': stack_env
+              'tag:env': stack_env,
+              'tag:os': "ubuntu-" ~ item.ubuntu_version
             }
             | combine(
                 item.name is defined | ternary({ 'tag:Name': item.name }, {})

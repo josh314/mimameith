@@ -12,7 +12,7 @@
 # Environment & stack settings
 
 ubuntu_versions:
-  db_server: "20.04"
+  db_server: "22.04"
   load_balancer: "22.04"
   app_server: "22.04"
 
@@ -25,7 +25,7 @@ key_file: ~/.ssh/josh-key-pair-useast.pem
 
 
 # AWS instance settings for the database servers
-db_server_instance_type: t3a.micro
+db_server_instance_type: t3a.small
 db_server_key_name: "{{ key_name }}"
 db_server_key_file: "{{ key_file }}"
 num_db_servers: 1
@@ -40,7 +40,7 @@ load_balancer_key_file: "{{ key_file }}"
 load_balancer_hostname: dev-lot-commander.{{ hosted_zone }}
 
 # AWS instance settings for the application servers
-app_server_instance_type: t3a.micro
+app_server_instance_type: t3a.small
 app_server_key_name: "{{ key_name }}"
 app_server_key_file: "{{ key_file }}"
 num_app_servers: 1
