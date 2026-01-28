@@ -3,12 +3,13 @@
 # Initialize variables
 env=""
 vendor=""
+check_mode=false
 
 # Function to display usage
 
 # Function to display usage
 usage() {
-    echo "Usage: $0 [--dev | --prod] [--vendor <vendor_name>]"
+    echo "Usage: $0 [--dev | --prod] [--vendor <vendor_name>] [--check]"
     exit 1
 }
 
@@ -32,6 +33,9 @@ while getopts ":dp-:" opt; do
                     ;;
                 prod)
                     env="prod"
+                    ;;
+                check)
+                    check_mode=true
                     ;;
                 vendor)
                     vendor="${!OPTIND}"
@@ -109,6 +113,10 @@ fi
 # Set verbosity flag based on environment
 [[ "$env" == "dev" ]] && verbose_flag="--verbose"
 
+# Set check mode flag if specified
+check_flag=""
+$check_mode && check_flag="--check"
+
 inventory_location="inventory/$env/hosts"
 
 # Invoke ansible-playbook
@@ -118,4 +126,5 @@ ansible-playbook \
     --extra-vars="@${extra_vars_location}" \
     ${extra_args} \
     ${verbose_flag} \
+    ${check_flag} \
     "$playbook_file"

@@ -60,7 +60,7 @@
           tag:env: "{{ stack_env }}"
       register: allocated_eips
 
-    - name: Fail if the elastic IPs are not allocated and tagged for the current environment ({{ stack_env}})
+    - name: Fail if the elastic IPs are not allocated and tagged for the current environment ({{ stack_env }})
       fail:
         msg: "Elastic IP {{ item }} is not allocated in AWS with the environment tag `{{ stack_env }}`. Please allocate and tag it before running this playbook."
       when: item not in allocated_eips.addresses | map(attribute='public_ip') | list

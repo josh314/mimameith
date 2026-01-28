@@ -1,6 +1,6 @@
-# Ansible deployment for Mímameith
-Playbooks and roles for deploying Mímameith, the distributed application stack for internal Expresshop operations. See below for detailed playbook descriptions. 
-Contains secret file(s) encrypted with `ansible-vault`.
+# Mímameith
+
+Infrastructure code for deploying Mímameith, the distributed application stack for internal Expresshop operations.
 
 ### Etymology
 
@@ -10,7 +10,11 @@ Contains secret file(s) encrypted with `ansible-vault`.
 
 However it is named, the world tree's roots and branches connect all the realms of Norse mythology, just as Mimameith connects the different aspects of our business.
 
-## Vagrant
+
+## Ansible
+See below for detailed playbook descriptions. Contains secret file(s) encrypted with `ansible-vault`.
+
+### Vagrant
 
 A `Vagrantfile` is included to spin up virtual machines for local use. It uses the same ansible playbooks from production for setting up the provisioned VMs (obviously without the ). A full development stack is available, including its various intranet connections.
 
@@ -18,7 +22,7 @@ There are also control machines which are not part of the stack but useful for p
 
 Inventory host and variable files are in `inventory/vagrant`.
 
-## Secrets
+### Secrets
 
 The encrypted, password-protected files are managed by `ansible-vault`. You can view the file with
 
@@ -46,7 +50,7 @@ ansible-vault encrypt secrets.yml
 
 When decrypting/re-encrypting, you actually setting a new password at the second stage so you will have to input the password twice for confirmation. See the help for `ansible-vault` for more options.
 
-### Inline encryption
+#### Inline encryption
 
 There may also be inline encrypted strings embedded in plain-text files. To generate an inline encrypted string, use the command
 
@@ -63,7 +67,7 @@ You will be asked for a passwword and then presented an output like
 
 Copy this all (including the `!vault |`) into a plaintext variable file (cannot be used directly in playbooks).
 
-### Password 
+#### Password 
 
 In order to use any of the playbooks which import an encrypted file (or file with inline encryption) a password must be input.
 
@@ -81,7 +85,7 @@ ansible-playbook app.yml -i hosts.yml --vault-password-file /path/to/password.tx
 
 If `/path/to/password.txt` has the executable-bit set, then Ansible will execute it and use the contents of `stdout` as the vault password.
 
-### Session cookie secret
+#### Session cookie secret
 
 To generate a new secret for session cookies, replace the `session_secret` field in `secrets.yml` with the result of
 
@@ -91,9 +95,9 @@ head -c20 /dev/urandom | base64
 
 This should be done semi-regularly. Note that old sessions will not be valid on servers instantiated with the new secret.
 
-# Playbooks
+## Playbooks
 
-## `clone-mongo.yml`
+### `clone-mongo.yml`
 
 Use shell commands `mongodump` and `mongorestore` to clone mongo installation from one host to another.
 
@@ -116,7 +120,7 @@ dest_db_port: '27017'
 db: ehdb
 ```
 
-## `mongo-backup.yml`
+### `mongo-backup.yml`
 
 Runs `mongo_tools` and `mongo_s3_backup` roles. Usage example:
 
@@ -130,7 +134,7 @@ ansible-playbook mongo-backup.yml \
 
 In the example above, we are running ansible on a vagrant-provisioned control server while the db to be copied lives at `ec2-35-174-137-1.compute-1.amazonaws.com`. Without the `mongo_s3_backup_host` var, the playbook will try to copy from mongodb installation on the server the playbook is being run against.
 
-## `ec2-stack.yml`
+### `ec2-stack.yml`
 
 Installs a stack to support lot-commander
 
@@ -143,7 +147,7 @@ ansible-playbook ec2-stack.yml \
 
 See also the bash scripts `run.sh` and `run-dev.sh`. These scripts run the `ec2-stack.yml` playbook with a number of variables loaded from `extra-vars.yml`. This variable file is not included in the repo but see `extra-vars-sample.yml` to view how it should be structured.
 
-## `ec2-cronbox.yml`
+### `ec2-cronbox.yml`
 
 A separate playbook to configure a server for occasional crons.
 
