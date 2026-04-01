@@ -90,23 +90,6 @@
             codename: "noble"
             name_filter: "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
 
-    - name: Define Ubuntu version info map
-      set_fact:
-        ubuntu_version_info:
-          "18.04":
-            codename: "bionic"
-            name_filter: "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"
-          "20.04":
-            codename: "focal"
-            name_filter: "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"
-          "22.04":
-            codename: "jammy"
-            name_filter: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-          "24.04":
-            codename: "noble"
-            name_filter: "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
-
-
     - name: Set db_server_ubuntu_version_codename
       set_fact:
         db_server_ubuntu_version_codename: "{{ ubuntu_version_info[ubuntu_versions.db_server].codename }}"

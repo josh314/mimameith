@@ -14,14 +14,6 @@ However it is named, the world tree's roots and branches connect all the realms 
 ## Ansible
 See below for detailed playbook descriptions. Contains secret file(s) encrypted with `ansible-vault`.
 
-### Vagrant
-
-A `Vagrantfile` is included to spin up virtual machines for local use. It uses the same ansible playbooks from production for setting up the provisioned VMs (obviously without the ). A full development stack is available, including its various intranet connections.
-
-There are also control machines which are not part of the stack but useful for performing maintenance tasks on other servers.
-
-Inventory host and variable files are in `inventory/vagrant`.
-
 ### Secrets
 
 The encrypted, password-protected files are managed by `ansible-vault`. You can view the file with
@@ -95,9 +87,9 @@ head -c20 /dev/urandom | base64
 
 This should be done semi-regularly. Note that old sessions will not be valid on servers instantiated with the new secret.
 
-## Playbooks
+### Playbooks
 
-### `clone-mongo.yml`
+#### `clone-mongo.yml`
 
 Use shell commands `mongodump` and `mongorestore` to clone mongo installation from one host to another.
 
@@ -120,7 +112,7 @@ dest_db_port: '27017'
 db: ehdb
 ```
 
-### `mongo-backup.yml`
+#### `mongo-backup.yml`
 
 Runs `mongo_tools` and `mongo_s3_backup` roles. Usage example:
 
@@ -134,7 +126,7 @@ ansible-playbook mongo-backup.yml \
 
 In the example above, we are running ansible on a vagrant-provisioned control server while the db to be copied lives at `ec2-35-174-137-1.compute-1.amazonaws.com`. Without the `mongo_s3_backup_host` var, the playbook will try to copy from mongodb installation on the server the playbook is being run against.
 
-### `ec2-stack.yml`
+#### `ec2-stack.yml`
 
 Installs a stack to support lot-commander
 
@@ -147,7 +139,7 @@ ansible-playbook ec2-stack.yml \
 
 See also the bash scripts `run.sh` and `run-dev.sh`. These scripts run the `ec2-stack.yml` playbook with a number of variables loaded from `extra-vars.yml`. This variable file is not included in the repo but see `extra-vars-sample.yml` to view how it should be structured.
 
-### `ec2-cronbox.yml`
+#### `ec2-cronbox.yml`
 
 A separate playbook to configure a server for occasional crons.
 
@@ -156,4 +148,39 @@ ansible-playbook ec2-cronbox.yml \
     -i inventory/prod/hosts \
     --vault-password-file password
 ```
+
+### Vagrant
+
+A `Vagrantfile` is included to spin up virtual machines for local use. It uses the same ansible playbooks from production for setting up the provisioned VMs (obviously without the ). A full development stack is available, including its various intranet connections.
+
+There are also control machines which are not part of the stack but useful for performing maintenance tasks on other servers.
+
+Inventory host and variable files are in `inventory/vagrant`.
+
+## SSM Session Manager
+
+For the app servers, we use AWS SSM Session Manager to connect to the instances instead of SSH. This allows us to avoid opening SSH ports on the servers and managing SSH keys. To start a session, use the command
+
+```
+aws ssm start-session --target <instance-id>
+```
+
+## Packer
+
+Packer is used to build AMIs for the app servers. The template is in `packer/app-server/template.pkr.hcl`. The provisioner runs the `app.yml` playbook to set up the server with all necessary dependencies and configuration for running lot-commander.
+
+Build via
+
+```
+packer build \
+  -var "version=<application version>" \
+  -var "build_sha=<commit SHA of mimameith>" \
+  -var "mimameith_version=<mimameith version>" \
+  -var "ansible_roles_sha=<commit SHA of ansible roles>" \
+  -var "ansible_roles_version=<ansible roles version>" \
+  template.pkr.hcl
+```
+
+Only `version` is required. The other variables have default values but it is recommended to set them to the correct values for better traceability of the built AMI. 
+
 
