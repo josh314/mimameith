@@ -39,6 +39,11 @@ variable "ansible_roles_version" {
   default = ""
 }
 
+variable "lot_commander_node_version" {
+  type = string
+  default = "24.x"
+}
+
 locals {
   timestamp = regex_replace(timestamp(), "[- TZ:]", "")
   db_host_name = var.environment == "prod" ? "ehdb-internal.wholesaleninjas.com" : "dev-ehdb-internal.wholesaleninjas.com"
@@ -101,10 +106,10 @@ build {
     ]
 
     extra_arguments = [
-      "--extra-vars", "@../../ansible/extra-vars.yml",
       "--vault-password-file", "../../ansible/password",
       "--verbose",
 
+      "-e", "lot_commander__node_version=${var.lot_commander_node_version}",
       "-e", "lot_commander__application_repository_version=${var.version}",
       "-e", "db_host=${local.db_host_name}",
       "-e", "hosted_zone=wholesaleninjas.com",
