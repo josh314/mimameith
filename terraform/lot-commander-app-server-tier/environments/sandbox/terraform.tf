@@ -4,7 +4,7 @@ terraform {
   backend "s3" {
     region         = "us-east-1"
     bucket         = "tf-state-476114126879-us-east-1"
-    key            = "lot-commander-app-server-tier.tfstate"
+    key            = "sandbox/lot-commander-app-server-tier.tfstate"
     use_lockfile   = true
     encrypt        = true
   }

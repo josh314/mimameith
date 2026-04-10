@@ -1,5 +1,5 @@
 locals {
-  name_prefix = "${var.app_name}-${var.environment}"
+  name_prefix = "${var.environment}-${var.app_name}"
 }
 
 # ── Data Sources ──────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ resource "aws_subnet" "app_servers" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "${var.app_name}-app-servers"
+    Name = "${local.name_prefix}-app-servers"
     env  = var.environment
   }
 }
@@ -49,7 +49,7 @@ resource "aws_security_group" "alb" {
   vpc_id      = var.vpc_id
 
   tags = {
-    Name = "${var.app_name}-alb"
+    Name = "${local.name_prefix}-alb"
     env  = var.environment
   }
 }
@@ -87,7 +87,7 @@ resource "aws_security_group" "app_servers" {
   vpc_id      = var.vpc_id
 
   tags = {
-    Name = "${var.app_name}-app-servers"
+    Name = "${local.name_prefix}-app-servers"
     env  = var.environment
   }
 }

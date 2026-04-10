@@ -15,6 +15,10 @@ variable "version" {
   type = string
 }
 
+variable "environment" {
+  type = string
+}
+
 variable "build_sha" {
   type = string
   default = "000000"
@@ -37,11 +41,12 @@ variable "ansible_roles_version" {
 
 locals {
   timestamp = regex_replace(timestamp(), "[- TZ:]", "")
+  db_host_name = var.environment == "prod" ? "ehdb-internal.wholesaleninjas.com" : "dev-ehdb-internal.wholesaleninjas.com"
 }
 
 source "amazon-ebs" "ubuntu" {
 
-  ami_name      = "lot-commander-app-server-${var.version}-${var.build_sha}-${local.timestamp}"
+  ami_name      = "${var.environment}-lot-commander-app-server-${var.version}-${var.build_sha}-${local.timestamp}"
   instance_type = "m8a.large"
   region        = "us-east-1"
   source_ami_filter {
@@ -70,6 +75,7 @@ source "amazon-ebs" "ubuntu" {
 
   tags = {
     Name                  = "lot-commander-app-server"
+    env                   = var.environment
     app_version           = var.version
     build_sha             = var.build_sha
     mimameith_version     = var.mimameith_version
@@ -100,7 +106,7 @@ build {
       "--verbose",
 
       "-e", "lot_commander__application_repository_version=${var.version}",
-      "-e", "db_host=ehdb-internal.wholesaleninjas.com",
+      "-e", "db_host=${local.db_host_name}",
       "-e", "hosted_zone=wholesaleninjas.com",
     ]
   }

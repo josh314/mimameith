@@ -1,13 +1,46 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${1:?Usage: ./deploy-lot-commander.sh <version>}"
+usage() {
+  echo "Usage: ./deploy-lot-commander.sh <version> [-e|--env <dev|prod>]" >&2
+  exit 1
+}
+
+VERSION="${1:?$(usage)}"
+shift
+
+ENV=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -e|--env)
+      ENV="${2:?--env requires a value}"
+      shift 2
+      ;;
+    *) usage ;;
+  esac
+done
+
+if [[ -z "$ENV" ]]; then
+  echo "WARNING: --env not specified, defaulting to dev" >&2
+  read -r -p "Continue with dev? [y/N] " response </dev/tty
+  if [[ ! "$response" =~ ^[yY]$ ]]; then
+    echo "Aborting." >&2
+    exit 1
+  fi
+  ENV="dev"
+fi
+
+if [[ "$ENV" != "dev" && "$ENV" != "prod" ]]; then
+  echo "ERROR: invalid environment '$ENV' — must be dev or prod" >&2
+  exit 1
+fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANSIBLE_ROLES_DIR="${ANSIBLE_ROLES_DIR:-"$(dirname "$REPO_ROOT")/ansible-roles"}"
 PACKER_DIR="$REPO_ROOT/packer/app-server"
-TF_DIR="$REPO_ROOT/terraform/lot-commander-app-server-tier/environments/prod"
-SSM_PARAMETER="/lot-commander/app-server/ami-id"
+TF_DIR="$REPO_ROOT/terraform/lot-commander-app-server-tier/environments/$ENV"
+SSM_PARAMETER="/$ENV/lot-commander/app-server/ami-id"
 REGION="us-east-1"
 
 SEMVER_RE='^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$'
@@ -57,7 +90,7 @@ check_repo "ansible-roles" "$ANSIBLE_ROLES_DIR"  AR_SHA      AR_TAG
 
 # ── Build AMI ─────────────────────────────────────────────────────────────────
 
-echo "==> Building AMI for lot-commander $VERSION (sha: $BUILD_SHA, tag: $BUILD_TAG)..."
+echo "==> Building AMI for lot-commander $VERSION [$ENV] (sha: $BUILD_SHA, tag: $BUILD_TAG)..."
 cd "$PACKER_DIR"
 
 packer_log=$(mktemp)
@@ -65,6 +98,7 @@ trap 'rm -f "$packer_log"' EXIT
 
 packer build \
   -machine-readable \
+  -var "environment=$ENV" \
   -var "version=$VERSION" \
   -var "build_sha=$BUILD_SHA" \
   -var "mimameith_version=$BUILD_TAG" \

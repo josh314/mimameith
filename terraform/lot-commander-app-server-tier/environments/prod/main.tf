@@ -32,7 +32,7 @@ module "app_server_tier" {
     "sg-0d79155d77efa9078", # EHDB access
   ]
 
-  ami_ssm_parameter_name = "/lot-commander/app-server/ami-id"
+  ami_ssm_parameter_name = "/prod/lot-commander/app-server/ami-id"
   instance_type          = "t3a.micro"
   app_port               = 9000
 
