@@ -73,6 +73,11 @@ variable "create_dns_record" {
   default     = false
 }
 
+variable "s3_app_buckets" {
+  description = "S3 bucket names the app needs read/write/list access to (no bucket create/delete)"
+  type        = list(string)
+}
+
 variable "asg_desired_capacity" {
   type    = number
   default = 1

@@ -42,6 +42,14 @@ module "app_server_tier" {
   # Set to true when ready to cut over from the existing EC2 load balancer
   create_dns_record = false
 
+  s3_app_buckets = [
+    "expresshop-documents",
+    "expresshop-manifests",
+    "expresshop-product-data-jobs",
+    "lot-images",
+    "lot-videos",
+  ]
+
   asg_desired_capacity = 1
   asg_min_size         = 1
   asg_max_size         = 1

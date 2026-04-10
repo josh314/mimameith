@@ -134,11 +134,33 @@ resource "aws_iam_role_policy_attachment" "ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-# For document and manifest storage, and any other S3 interactions from the app.
-# TODO: scope down to least privilege (doesn't need to create/destroy buckets, for example)
-resource "aws_iam_role_policy_attachment" "s3" {
-  role       = aws_iam_role.app_servers.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+resource "aws_iam_role_policy" "s3" {
+  name = "s3-app-buckets"
+  role = aws_iam_role.app_servers.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ReadWrite"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:GetObjectTagging",
+          "s3:PutObjectTagging",
+        ]
+        Resource = [for b in var.s3_app_buckets : "arn:aws:s3:::${b}/*"]
+      },
+      {
+        Sid    = "ListBuckets"
+        Effect = "Allow"
+        Action = "s3:ListBucket"
+        Resource = [for b in var.s3_app_buckets : "arn:aws:s3:::${b}"]
+      },
+    ]
+  })
 }
 
 resource "aws_iam_instance_profile" "app_servers" {
