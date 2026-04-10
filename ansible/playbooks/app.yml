@@ -57,8 +57,6 @@
         lot_commander__skip_auth: "{{ skip_application_auth }}"
         db_app_user: "{{ db.auth.app.user }}"
         db_app_password: "{{ db.auth.app.password }}"
-        lot_commander__aws_access_key_id: "{{ aws.credentials.lot_commander.aws_access_key_id }}"
-        lot_commander__aws_secret_access_key: "{{ aws.credentials.lot_commander.aws_secret_access_key }}"
         lot_commander__session_secret: "{{ lot_commander.session_secret }}"
 
     - import_role:
