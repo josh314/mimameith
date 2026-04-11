@@ -40,7 +40,7 @@ module "app_server_tier" {
   hosted_zone_name = "wholesaleninjas.com."
 
   # Set to true when ready to cut over from the existing EC2 load balancer
-  create_dns_record = false
+  create_dns_record = true
 
   s3_app_buckets = [
     "expresshop-documents",

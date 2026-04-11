@@ -388,9 +388,10 @@ resource "aws_autoscaling_group" "app" {
 resource "aws_route53_record" "app" {
   count = var.create_dns_record ? 1 : 0
 
-  zone_id = data.aws_route53_zone.main.zone_id
-  name    = var.domain_name
-  type    = "A"
+  zone_id         = data.aws_route53_zone.main.zone_id
+  name            = var.domain_name
+  type            = "A"
+  allow_overwrite = true
 
   alias {
     name                   = aws_lb.main.dns_name
