@@ -71,13 +71,10 @@ check_repo() {
     prompt_continue "$name has uncommitted changes — build may not be reproducible"
   fi
 
-  tag=$(git -C "$dir" tag --list | grep -E "$SEMVER_RE" | sort -V | tail -1)
+  tag=$(git -C "$dir" tag --points-at HEAD | grep -E "$SEMVER_RE" | sort -V | tail -1)
 
   if [[ -z "$tag" ]]; then
-    prompt_continue "$name has no semver tags"
-    tag="untagged"
-  elif ! git -C "$dir" describe --exact-match --tags HEAD 2>/dev/null | grep -qE "$SEMVER_RE"; then
-    prompt_continue "$name HEAD ($sha) is not at a semver tag (latest: $tag)"
+    prompt_continue "$name HEAD ($sha) is not at a semver tag"
     tag="NONE"
   fi
 
