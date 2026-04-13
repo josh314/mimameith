@@ -140,24 +140,18 @@ resource "aws_iam_role_policy" "s3" {
 
   policy = jsonencode({
     Version = "2012-10-17"
+    # TODO: tighten to least-privilege once S3 usage is fully audited
     Statement = [
       {
-        Sid    = "ReadWrite"
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject",
-          "s3:GetObjectTagging",
-          "s3:PutObjectTagging",
-        ]
-        Resource = [for b in var.s3_app_buckets : "arn:aws:s3:::${b}/*"]
-      },
-      {
-        Sid    = "ListBuckets"
-        Effect = "Allow"
-        Action = "s3:ListBucket"
-        Resource = [for b in var.s3_app_buckets : "arn:aws:s3:::${b}"]
+        Sid      = "FullAccessAppBuckets"
+        Effect   = "Allow"
+        Action   = "s3:*"
+        Resource = flatten([
+          for b in var.s3_app_buckets : [
+            "arn:aws:s3:::${b}",
+            "arn:aws:s3:::${b}/*",
+          ]
+        ])
       },
     ]
   })
