@@ -2,10 +2,9 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# ALB requires subnets in at least 2 AZs. Use the existing default subnets
-# from the VPC (one per AZ) — they already have routes to the IGW.
-# The ASG instances live only in the new /26 subnet (us-east-1a).
-data "aws_subnets" "default" {
+# ALB requires subnets in at least 2 AZs. Pinned to us-east-1a (where ASG
+# instances run) and us-east-1b for simplicity
+data "aws_subnets" "alb" {
   filter {
     name   = "vpc-id"
     values = ["vpc-39092a5d"]
@@ -13,6 +12,10 @@ data "aws_subnets" "default" {
   filter {
     name   = "defaultForAz"
     values = ["true"]
+  }
+  filter {
+    name   = "availabilityZone"
+    values = ["us-east-1a", "us-east-1b"]
   }
 }
 
@@ -26,7 +29,7 @@ module "app_server_tier" {
   availability_zone = "us-east-1a"
   subnet_cidr       = "172.31.112.0/26"
 
-  alb_subnet_ids = data.aws_subnets.default.ids
+  alb_subnet_ids = data.aws_subnets.alb.ids
 
   additional_security_group_ids = [
     "sg-0d79155d77efa9078", # EHDB access
