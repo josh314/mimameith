@@ -1,17 +1,19 @@
+# terraform
+.terraform/
+*.tfbackend
+*.tfvars
+
 .vagrant
+
+# general, including temp and scratch files
 .DS_Store
-
+__*
 *.log
-
 sample/
 
-# secret shit
+# secrets
 password
 unsafe*
-
-#
-__*
-
 
 # deploy script versioning vars
 extra-vars*.yml
