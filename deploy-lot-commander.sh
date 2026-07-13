@@ -71,7 +71,7 @@ check_repo() {
     prompt_continue "$name has uncommitted changes — build may not be reproducible"
   fi
 
-  tag=$(git -C "$dir" tag --points-at HEAD | grep -E "$SEMVER_RE" | sort -V | tail -1)
+  tag=$(git -C "$dir" tag --points-at HEAD | grep -E "$SEMVER_RE" | sort -V | tail -1 || true)
 
   if [[ -z "$tag" ]]; then
     prompt_continue "$name HEAD ($sha) is not at a semver tag"
@@ -130,7 +130,15 @@ echo "==> Running terraform apply..."
 cd "$TF_DIR"
 
 # Check before apply so we know whether to trigger an instance refresh after
-terraform state list 2>/dev/null | grep -q 'aws_autoscaling_group' && ASG_EXISTS=true || ASG_EXISTS=false
+_state=$(terraform state list 2>/dev/null || true)
+if grep -q 'aws_autoscaling_group' <<< "$_state"; then
+  ASG_EXISTS=true
+  echo "==> ASG exists in state — instance refresh will be triggered after apply"
+else
+  ASG_EXISTS=false
+  echo "==> ASG not in state — no instance refresh will be triggered after apply"
+fi
+unset _state
 
 terraform apply
 
