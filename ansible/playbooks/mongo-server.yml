@@ -1,6 +1,6 @@
 - name: Deploy mongodb server
   hosts: mongo_servers
-  become: yes
+  become: true
   vars_files:
     - ../secrets.yml
   vars:
@@ -12,8 +12,6 @@
     mongodb_backup_password: "{{ db.auth.backup.password }}"
     mongodb_restore_user: "{{ db.auth.restore.user }}"
     mongodb_restore_password: "{{ db.auth.restore.password }}"
-    mongo_s3_restore_aws_access_key: "{{ aws.credentials.admin.aws_access_key_id }}"
-    mongo_s3_restore_aws_secret_key: "{{ aws.credentials.admin.aws_secret_access_key }}"
 
   tasks:
 
@@ -37,7 +35,7 @@
       apt:
         update-cache: yes
         upgrade: dist
-      become: yes
+      become: true
 
     # Install and configure mongodb
     - import_role:
@@ -58,7 +56,12 @@
 
     # Setup backup script unless explicitly skipped
     - import_role:
-        name: mongo_backup_cron
+        name: mongo_backup_cron_v2
+      vars:
+        mongo_backup_cron_v2_db_user: "{{ mongodb_backup_user }}"
+        mongo_backup_cron_v2_db_password: "{{ mongodb_backup_password }}"
+        mongo_backup_cron_v2_s3_bucket: "{{ mongo_s3_backup_s3_bucket }}"
+        mongo_backup_cron_v2_aws_region: "{{ hostvars[ groups['control'][0] ].aws_region }}"
       when: mongo_skip_s3_backups | default(false) == false
 
     - import_role:

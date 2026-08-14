@@ -462,6 +462,8 @@
     ubuntu_version_codename: "{{ hostvars[ groups['control'][0] ].db_server_ubuntu_version_codename }}"
     mongo_server__skip_mongo_setup: "{{ not hostvars[ groups['control'][0] ].mongodb_server_deployed }}"
     mongo_skip_s3_backups: "{{ hostvars[ groups['control'][0] ].mongo_skip_s3_backups | default(false) }}"
+    mongo_s3_restore_aws_access_key: "{{ aws.credentials.admin.aws_access_key_id }}"
+    mongo_s3_restore_aws_secret_key: "{{ aws.credentials.admin.aws_secret_access_key }}"
   when: configure__db_server
 
 - name: Configure load balancer

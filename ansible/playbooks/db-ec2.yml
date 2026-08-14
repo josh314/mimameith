@@ -1,0 +1,360 @@
+
+###########################################################
+# Provision AWS resources
+# =======================
+#
+###########################################################
+
+
+
+- name: Provision AWS resources
+  hosts: control
+  gather_facts: false
+  vars:
+    default_org: "{{ org | default('') }}"
+    instance_meta:
+      - id: db_server
+        tier: database
+        stack: mimameith
+        name: mongodb-server
+        ubuntu_version: "{{ ubuntu_versions.db_server }}"
+        extra_tags:
+          mongo_ver: "{{ mongodb_major_version }}"
+    ami_ids: {}
+    db_server_iam_role_name: "{{ stack_env }}-mimameith-db-server"
+
+  tasks:
+
+  #####################################################################################
+  # Sanity checks
+  # ===============================
+  #
+  #####################################################################################
+
+    - name: Fail if MongoDB version is too old for the Ubuntu version
+      fail:
+        msg: >-
+          MongoDB {{ mongodb_major_version }} is not supported on Ubuntu {{ ubuntu_versions.db_server }}.
+      when: >
+        (mongodb_major_version | int < 6 and ubuntu_versions.db_server == '22.04') or
+        (mongodb_major_version | int < 8 and ubuntu_versions.db_server == '24.04')
+
+    - name: check if elastic IPs are defined
+      fail:
+        msg: "Elastic IP for db_server_eip must be defined in extra-vars.yml"
+      when: (db_server_eip is not defined or db_server_eip == '')
+
+    - name: retrieve all allocated EIP addresses
+      amazon.aws.ec2_eip_info:
+        region: "{{ aws_region }}"
+        filters:
+          tag:env: "{{ stack_env }}"
+      register: allocated_eips
+
+    - name: Fail if the elastic IPs are not allocated and tagged for the current environment ({{ stack_env }})
+      fail:
+        msg: "Elastic IP {{ item }} is not allocated in AWS with the environment tag `{{ stack_env }}`. Please allocate and tag it before running this playbook."
+      when: item not in allocated_eips.addresses | map(attribute='public_ip') | list
+      loop:
+        - "{{ db_server_eip }}"
+
+  #####################################################################################
+  # Set Ubuntu version and find AMI
+  # ===============================
+  #
+  #####################################################################################
+
+    - name: Define Ubuntu version info map
+      set_fact:
+        ubuntu_version_info:
+          "18.04":
+            codename: "bionic"
+            name_filter: "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"
+          "20.04":
+            codename: "focal"
+            name_filter: "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"
+          "22.04":
+            codename: "jammy"
+            name_filter: "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+          "24.04":
+            codename: "noble"
+            name_filter: "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
+
+    - name: Set db_server_ubuntu_version_codename
+      set_fact:
+        db_server_ubuntu_version_codename: "{{ ubuntu_version_info[ubuntu_versions.db_server].codename }}"
+
+    - name: build ami_ids dict
+      include_tasks: build-ubuntu-ami-ids.yml
+      loop: "{{ ubuntu_versions | dict2items( key_name='server', value_name='version' ) }}"
+      loop_control:
+        loop_var: ubuntu_version_item
+
+  #####################################################################################
+  # Set EC2 instance metadata
+  # =========================
+  #
+  #####################################################################################
+
+    - name: Generate count_tags and instance_filter for all instances
+      set_fact:
+        "{{ item.id }}_count_tags": >-
+          {{
+            {
+              'tier': item.tier,
+              'stack': item.stack,
+              'org': default_org,
+              'env': stack_env,
+              'os': "ubuntu-" ~ item.ubuntu_version
+            }
+            | combine(
+                item.name is defined | ternary({ 'Name': item.name }, {})
+              )
+            | combine(
+                item.version_var is defined | ternary({ 'version': item.version_var }, {})
+              )
+            | combine( item.extra_tags | default({}) )
+          }}
+        "{{ item.id }}_instance_filter": >-
+          {{
+            {
+              'instance-state-name': 'running',
+              'tag:tier': item.tier,
+              'tag:stack': item.stack,
+              'tag:org': default_org,
+              'tag:env': stack_env,
+              'tag:os': "ubuntu-" ~ item.ubuntu_version
+            }
+            | combine(
+                item.name is defined | ternary({ 'tag:Name': item.name }, {})
+              )
+            | combine(
+                item.version_var is defined | ternary({ 'tag:version': item.version_var }, {})
+              )
+          }}
+      loop: "{{ instance_meta }}"
+
+    - debug:
+        msg: db_server_count_tags
+
+  #####################################################################################
+  # IAM instance role
+  # ==================
+  # Grants the db server instance role-based access to its S3 backup/restore
+  # buckets, so we can move off the long-lived credentials in secrets.yml.
+  # Credential-file based auth (aws.credentials.admin) is left in place for now.
+  #####################################################################################
+
+    - name: Determine S3 buckets used for backup/restore
+      set_fact:
+        db_server_s3_buckets: >-
+          {{ [mongo_s3_backup_s3_bucket | default(''), mongo_s3_restore_s3_bucket | default('')]
+             | reject('equalto', '') | unique | list }}
+      when: provision__db_server
+
+    - name: Create IAM role for the database instance
+      amazon.aws.iam_role:
+        name: "{{ db_server_iam_role_name }}"
+        assume_role_policy_document:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: ec2.amazonaws.com
+              Action: sts:AssumeRole
+        create_instance_profile: false
+        tags: "{{ db_server_count_tags }}"
+      when: provision__db_server
+
+    - name: Set inline S3 policy for mongo backup/restore buckets on the database IAM role
+      amazon.aws.iam_policy:
+        iam_type: role
+        iam_name: "{{ db_server_iam_role_name }}"
+        policy_name: mongo-s3-backup-restore
+        policy_json:
+          Version: "2012-10-17"
+          Statement:
+            - Sid: MongoS3BucketAccess
+              Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:GetBucketLocation
+                - s3:CreateBucket
+              Resource: "{{ db_server_s3_buckets | map('regex_replace', '(.+)', 'arn:aws:s3:::\\1') | list }}"
+            - Sid: MongoS3ObjectAccess
+              Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:PutObjectAcl
+              Resource: "{{ db_server_s3_buckets | map('regex_replace', '(.+)', 'arn:aws:s3:::\\1/*') | list }}"
+      when: provision__db_server and db_server_s3_buckets | length > 0
+
+    - name: Create IAM instance profile for the database instance
+      amazon.aws.iam_instance_profile:
+        name: "{{ db_server_iam_role_name }}"
+        role: "{{ db_server_iam_role_name }}"
+        tags: "{{ db_server_count_tags }}"
+      when: provision__db_server
+
+  #####################################################################################
+  # EC2 provisioning and configuration
+  # ==================================
+  #
+  #####################################################################################
+
+    - name: Provision the Database instance in EC2
+      amazon.aws.ec2_instance:
+        state: running
+        image:
+          id: "{{ ami_ids.db_server }}"
+        region: "{{ aws_region }}"
+        instance_type: "{{ db_server_instance_type }}"
+        key_name: "{{ db_server_key_name }}"
+        security_groups:
+          - Internal
+          - default
+          - EHDB
+        iam_instance_profile: "{{ db_server_iam_role_name }}"
+        tags: "{{ db_server_count_tags }}"
+        filters: "{{ db_server_instance_filter }}"
+        exact_count: "{{ num_db_servers }}"
+        detailed_monitoring: "{{ stack_env == 'prod' }}"
+        metadata_options:
+          http_endpoint: enabled
+          http_protocol_ipv6: enabled
+          http_tokens: required
+          http_put_response_hop_limit: 1
+          instance_metadata_tags: enabled
+        volumes:
+          - device_name: /dev/sda1
+            ebs:
+              volume_size: 8
+              volume_type: gp3
+              delete_on_termination: true
+      register: ec2_db_server_ec2_instance_result
+      retries: 5
+      delay: 10
+      until: ec2_db_server_ec2_instance_result is succeeded
+      when: provision__db_server
+
+
+    #################################################################################################
+    ## Setting facts for later use
+
+    # database facts
+
+    - name: "Setting fact: mongodb_server_deployed"
+      set_fact:
+        mongodb_server_deployed: '{{ ec2_db_server_ec2_instance_result is defined and ec2_db_server_ec2_instance_result.changed }}'
+
+    - name: "Setting fact: db_server_instances (from ec2_instance result)"
+      set_fact:
+        db_server_instances: '{{ ec2_db_server_ec2_instance_result.instances }}'
+      when: ec2_db_server_ec2_instance_result.instances is defined and ec2_db_server_ec2_instance_result.instances[0] is defined
+
+    - name: "Setting fact: db_server_private_ip"
+      set_fact:
+        db_server_private_ip: '{{ db_server_instances[0].private_ip_address }}'
+      when: db_server_instances is defined and db_server_instances[0] is defined
+
+    - name: "Setting fact: db_server_public_ip"
+      set_fact:
+        db_server_public_ip: '{{ db_server_instances[0].public_ip_address }}'
+      when: db_server_instances is defined and db_server_instances[0] is defined
+
+    - name: "Setting fact: db_server_instance_id (from ec2_instance result)"
+      set_fact:
+        db_server_instance_id: '{{ ec2_db_server_ec2_instance_result.instances[0].instance_id }}'
+      when: ec2_db_server_ec2_instance_result.instances is defined and ec2_db_server_ec2_instance_result.instances[0] is defined
+
+    - name: "Setting fact: db_server_instance_id"
+      set_fact:
+        db_server_instance_id: '{{ db_server_instances[0].instance_id }}'
+      when: db_server_instances is defined and db_server_instances[0] is defined
+
+    #################################################################################################
+    ## Wait for servers to be available
+
+    - name: Initialize empty wait list
+      set_fact:
+        wait_list: []
+
+    - name: Add db to wait list
+      set_fact:
+        wait_list: "{{ wait_list + db_server_instances }}"
+      when: db_server_instances is defined
+
+    - name: Wait for connections to wait list hosts
+      wait_for:
+        host: "{{ item.public_ip_address }}"
+        port: 22
+        search_regex: OpenSSH
+      loop: "{{ wait_list }}"
+      loop_control:
+        loop_var: item
+        index_var: idx
+        label: "{{ item.tags.Name if items.tags.Name is defined else item.tags.tier }}"
+
+
+    #################################################################################################
+    ## EC2 level configuration
+
+    # Setting elastic IPs for db server
+
+    - name: Associate Elastic IP with db server
+      amazon.aws.ec2_eip:
+        device_id: "{{ db_server_instance_id }}"
+        ip: "{{ db_server_eip }}"
+        allow_reassociation: true
+      register: ec2_db_server_eip_result
+      when: db_server_instance_id is defined and db_server_eip is defined
+
+    #################################################################################################
+    ## DNS
+
+    - name: set internal DNS name for db server
+      amazon.aws.route53:
+        state: present
+        zone: "{{ hosted_zone }}"
+        private_zone: true
+        record: "{{ db_server_private_hostname }}"
+        type: A
+        value: "{{ db_server_private_ip }}"
+        overwrite: true
+      when: db_server_private_ip is defined
+
+    - name: set public DNS name for db server
+      amazon.aws.route53:
+        state: present
+        zone: "{{ hosted_zone }}"
+        record: "{{ db_server_public_hostname }}"
+        type: A
+        value: "{{ db_server_eip }}"
+        overwrite: true
+
+    #################################################################################################
+    ## Adding newly provisioned hosts to inventory
+
+    - name: add database EIP to inventory
+      add_host:
+        hostname: "{{ db_server_eip }}"
+        ansible_user: ubuntu
+        ansible_ssh_private_key_file: "{{ db_server_key_file }}"
+        groups:
+          - mongo_servers
+
+###########################################################
+# Configure provisioned resources with server playbooks
+# =====================================================
+#
+###########################################################
+
+- name: Mongo server playbook
+  import_playbook: mongo-server.yml
+  vars:
+    mongodb_major_version: "{{ hostvars[ groups['control'][0] ].mongodb_major_version }}"
+    ubuntu_version_codename: "{{ hostvars[ groups['control'][0] ].db_server_ubuntu_version_codename }}"
+    mongo_server__skip_mongo_setup: "{{ not hostvars[ groups['control'][0] ].mongodb_server_deployed }}"
+    mongo_skip_s3_backups: "{{ hostvars[ groups['control'][0] ].mongo_skip_s3_backups | default(false) }}"
+  when: configure__db_server

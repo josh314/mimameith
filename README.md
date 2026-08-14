@@ -89,6 +89,22 @@ This should be done semi-regularly. Note that old sessions will not be valid on 
 
 ### Playbooks
 
+#### Database (db-only workflow)
+
+`db-ec2.yml` provisions (or reconfigures) just the MongoDB tier: an EC2 instance, its Elastic IP/DNS, an IAM instance role scoped to the S3 backup/restore buckets (`mongo_s3_backup_s3_bucket`/`mongo_s3_restore_s3_bucket`), and then imports `mongo-server.yml` to install and configure MongoDB. This is the current, preferred way to stand up or update the db server — it replaces running the full `ec2-stack.yml` stack (see [Legacy](#legacy)) just to touch the database tier.
+
+**Requires `ansible-roles` >= 6.2.0.** This workflow relies on IAM-role-based S3 access for backup/restore that was added in that version; older `ansible-roles` versions only support the static-credential path (`aws.credentials.admin.*`) that `ec2-stack.yml` still uses.
+
+Run from the `ansible/` directory:
+
+```
+./deploy-db.sh --dev    # or --prod
+./deploy-db.sh --prod --check   # dry run
+```
+
+This wraps `ansible-playbook -i inventory/<env>/hosts --vault-password-file password --extra-vars=@extra-vars.yml playbooks/db-ec2.yml` — see `extra-vars.sample.yml` for the variables it expects (e.g. `mongodb_major_version`, `db_server_eip`, `ubuntu_versions`).
+
+
 #### `clone-mongo.yml`
 
 Use shell commands `mongodump` and `mongorestore` to clone mongo installation from one host to another.
@@ -126,19 +142,6 @@ ansible-playbook mongo-backup.yml \
 
 In the example above, we are running ansible on a vagrant-provisioned control server while the db to be copied lives at `ec2-35-174-137-1.compute-1.amazonaws.com`. Without the `mongo_s3_backup_host` var, the playbook will try to copy from mongodb installation on the server the playbook is being run against.
 
-#### `ec2-stack.yml`
-
-Installs a stack to support lot-commander
-
-```
-ansible-playbook ec2-stack.yml \
-    -i inventory/prod/hosts \
-    --vault-password-file password \
-    -e lot-commander__application_repository_version=<branch name of lot-commander>
-```
-
-See also the bash scripts `run.sh` and `run-dev.sh`. These scripts run the `ec2-stack.yml` playbook with a number of variables loaded from `extra-vars.yml`. This variable file is not included in the repo but see `extra-vars-sample.yml` to view how it should be structured.
-
 #### `ec2-cronbox.yml`
 
 A separate playbook to configure a server for occasional crons.
@@ -165,14 +168,39 @@ For the app servers, we use AWS SSM Session Manager to connect to the instances 
 aws ssm start-session --target <instance-id>
 ```
 
-## Packer
+## Legacy
 
-Packer is used to build AMIs for the app servers. The template is in `packer/app-server/template.pkr.hcl`. The provisioner runs the `app.yml` playbook to set up the server with all necessary dependencies and configuration for running lot-commander.
+The material below documents the original EC2-based **lot-commander** stack: the app server, its Nginx load balancer, and the AMI pipeline that built the app server image. **lot-commander's app-server tier now runs on ECS, managed in a separate project outside this repo** — the app-server/load-balancer portions here are no longer the live deploy path. The database-tier portion of `ec2-stack.yml` has been superseded by the dedicated [Database (db-only workflow)](#database-db-only-workflow) documented above. Kept for historical reference, not deleted — see `CLAUDE.md` for more on the current state of this transition.
+
+### `ec2-stack.yml`
+
+Provisioned the full lot-commander stack — app server(s), load balancer, and db server — gated by `provision__*`/`configure__*` toggles in `extra-vars.yml`.
+
+```
+ansible-playbook ec2-stack.yml \
+    -i inventory/prod/hosts \
+    --vault-password-file password \
+    -e lot-commander__application_repository_version=<branch name of lot-commander>
+```
+
+See also `run-playbooks.sh`, which runs `ec2-stack.yml` with variables loaded from `extra-vars.yml` (see `extra-vars.sample.yml` for the expected structure):
+
+```
+./run-playbooks.sh --dev    # or --prod, plus --check for a dry run
+```
+
+The script's `--vendor <name>` option (intended to run a client/vendor variant) is currently broken — it references files that don't exist in this repo. See `CLAUDE.md`.
+
+### Packer
+
+Packer was used to build AMIs for the lot-commander app server. The template is in `packer/app-server/template.pkr.hcl`. The provisioner runs the `app.yml` playbook to set up the server with all necessary dependencies and configuration for running lot-commander.
 
 Build via
 
 ```
+cd packer/app-server
 packer build \
+  -var "environment=<dev|prod>" \
   -var "version=<application version>" \
   -var "build_sha=<commit SHA of mimameith>" \
   -var "mimameith_version=<mimameith version>" \
@@ -181,6 +209,6 @@ packer build \
   template.pkr.hcl
 ```
 
-Only `version` is required. The other variables have default values but it is recommended to set them to the correct values for better traceability of the built AMI. 
+`environment` and `version` are required; the other variables have defaults but it's recommended to set them for better traceability of the built AMI. This was paired with `deploy-lot-commander.sh` at the repo root, which built the AMI, wrote its ID to SSM, and ran `terraform apply` plus an ASG instance refresh — see `CLAUDE.md` for why that script no longer works as-is.
 
 
