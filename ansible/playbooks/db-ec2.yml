@@ -39,25 +39,6 @@
         (mongodb_major_version | int < 6 and ubuntu_versions.db_server == '22.04') or
         (mongodb_major_version | int < 8 and ubuntu_versions.db_server == '24.04')
 
-    - name: check if elastic IPs are defined
-      fail:
-        msg: "Elastic IP for db_server_eip must be defined in extra-vars.yml"
-      when: (db_server_eip is not defined or db_server_eip == '')
-
-    - name: retrieve all allocated EIP addresses
-      amazon.aws.ec2_eip_info:
-        region: "{{ aws_region }}"
-        filters:
-          tag:env: "{{ stack_env }}"
-      register: allocated_eips
-
-    - name: Fail if the elastic IPs are not allocated and tagged for the current environment ({{ stack_env }})
-      fail:
-        msg: "Elastic IP {{ item }} is not allocated in AWS with the environment tag `{{ stack_env }}`. Please allocate and tag it before running this playbook."
-      when: item not in allocated_eips.addresses | map(attribute='public_ip') | list
-      loop:
-        - "{{ db_server_eip }}"
-
   #####################################################################################
   # Set Ubuntu version and find AMI
   # ===============================
@@ -150,7 +131,6 @@
         db_server_s3_buckets: >-
           {{ [mongo_s3_backup_s3_bucket | default(''), mongo_s3_restore_s3_bucket | default('')]
              | reject('equalto', '') | unique | list }}
-      when: provision__db_server
 
     - name: Create IAM role for the database instance
       amazon.aws.iam_role:
@@ -164,7 +144,6 @@
               Action: sts:AssumeRole
         create_instance_profile: false
         tags: "{{ db_server_count_tags }}"
-      when: provision__db_server
 
     - name: Set inline S3 policy for mongo backup/restore buckets on the database IAM role
       amazon.aws.iam_policy:
@@ -188,14 +167,13 @@
                 - s3:PutObject
                 - s3:PutObjectAcl
               Resource: "{{ db_server_s3_buckets | map('regex_replace', '(.+)', 'arn:aws:s3:::\\1/*') | list }}"
-      when: provision__db_server and db_server_s3_buckets | length > 0
+      when: db_server_s3_buckets | length > 0
 
     - name: Create IAM instance profile for the database instance
       amazon.aws.iam_instance_profile:
         name: "{{ db_server_iam_role_name }}"
         role: "{{ db_server_iam_role_name }}"
         tags: "{{ db_server_count_tags }}"
-      when: provision__db_server
 
   #####################################################################################
   # EC2 provisioning and configuration
@@ -236,7 +214,6 @@
       retries: 5
       delay: 10
       until: ec2_db_server_ec2_instance_result is succeeded
-      when: provision__db_server
 
 
     #################################################################################################
@@ -262,6 +239,11 @@
       set_fact:
         db_server_public_ip: '{{ db_server_instances[0].public_ip_address }}'
       when: db_server_instances is defined and db_server_instances[0] is defined
+
+    - name: Fail if the database instance's public IP could not be determined
+      fail:
+        msg: "Could not determine db_server_public_ip for the database instance — check that it's running and matches the expected tags."
+      when: db_server_public_ip is not defined
 
     - name: "Setting fact: db_server_instance_id (from ec2_instance result)"
       set_fact:
@@ -300,16 +282,6 @@
     #################################################################################################
     ## EC2 level configuration
 
-    # Setting elastic IPs for db server
-
-    - name: Associate Elastic IP with db server
-      amazon.aws.ec2_eip:
-        device_id: "{{ db_server_instance_id }}"
-        ip: "{{ db_server_eip }}"
-        allow_reassociation: true
-      register: ec2_db_server_eip_result
-      when: db_server_instance_id is defined and db_server_eip is defined
-
     #################################################################################################
     ## DNS
 
@@ -330,15 +302,15 @@
         zone: "{{ hosted_zone }}"
         record: "{{ db_server_public_hostname }}"
         type: A
-        value: "{{ db_server_eip }}"
+        value: "{{ db_server_public_ip }}"
         overwrite: true
 
     #################################################################################################
     ## Adding newly provisioned hosts to inventory
 
-    - name: add database EIP to inventory
+    - name: add database host to inventory
       add_host:
-        hostname: "{{ db_server_eip }}"
+        hostname: "{{ db_server_public_ip }}"
         ansible_user: ubuntu
         ansible_ssh_private_key_file: "{{ db_server_key_file }}"
         groups:
@@ -357,4 +329,3 @@
     ubuntu_version_codename: "{{ hostvars[ groups['control'][0] ].db_server_ubuntu_version_codename }}"
     mongo_server__skip_mongo_setup: "{{ not hostvars[ groups['control'][0] ].mongodb_server_deployed }}"
     mongo_skip_s3_backups: "{{ hostvars[ groups['control'][0] ].mongo_skip_s3_backups | default(false) }}"
-  when: configure__db_server

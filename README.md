@@ -102,7 +102,7 @@ Run from the `ansible/` directory:
 ./deploy-db.sh --prod --check   # dry run
 ```
 
-This wraps `ansible-playbook -i inventory/<env>/hosts --vault-password-file password --extra-vars=@extra-vars.yml playbooks/db-ec2.yml` — see `extra-vars.sample.yml` for the variables it expects (e.g. `mongodb_major_version`, `db_server_eip`, `ubuntu_versions`).
+This wraps `ansible-playbook -i inventory/<env>/hosts --vault-password-file password --extra-vars=@extra-vars.yml playbooks/db-ec2.yml` — see `extra-vars.sample.yml` for the variables it expects (e.g. `mongodb_major_version`, `db_server_key_file`, `ubuntu_versions`).
 
 
 #### `clone-mongo.yml`
