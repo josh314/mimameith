@@ -39,6 +39,21 @@
         (mongodb_major_version | int < 6 and ubuntu_versions.db_server == '22.04') or
         (mongodb_major_version | int < 8 and ubuntu_versions.db_server == '24.04')
 
+    - name: retrieve all allocated EIP addresses
+      amazon.aws.ec2_eip_info:
+        region: "{{ aws_region }}"
+        filters:
+          tag:env: "{{ stack_env }}"
+      register: allocated_eips
+      when: db_server_eip is defined and db_server_eip != ''
+
+    - name: Fail if the elastic IP is not allocated and tagged for the current environment ({{ stack_env }})
+      fail:
+        msg: "Elastic IP {{ db_server_eip }} is not allocated in AWS with the environment tag `{{ stack_env }}`. Please allocate and tag it before running this playbook."
+      when: >
+        db_server_eip is defined and db_server_eip != '' and
+        db_server_eip not in (allocated_eips.addresses | map(attribute='public_ip') | list)
+
   #####################################################################################
   # Set Ubuntu version and find AMI
   # ===============================
@@ -282,6 +297,14 @@
     #################################################################################################
     ## EC2 level configuration
 
+    - name: Associate Elastic IP with db server
+      amazon.aws.ec2_eip:
+        device_id: "{{ db_server_instance_id }}"
+        ip: "{{ db_server_eip }}"
+        allow_reassociation: true
+      register: ec2_db_server_eip_result
+      when: db_server_instance_id is defined and db_server_eip is defined and db_server_eip != ''
+
     #################################################################################################
     ## DNS
 
@@ -302,7 +325,7 @@
         zone: "{{ hosted_zone }}"
         record: "{{ db_server_public_hostname }}"
         type: A
-        value: "{{ db_server_public_ip }}"
+        value: "{{ db_server_eip | default(db_server_public_ip, true) }}"
         overwrite: true
 
     #################################################################################################
@@ -310,7 +333,7 @@
 
     - name: add database host to inventory
       add_host:
-        hostname: "{{ db_server_public_ip }}"
+        hostname: "{{ db_server_eip | default(db_server_public_ip, true) }}"
         ansible_user: ubuntu
         ansible_ssh_private_key_file: "{{ db_server_key_file }}"
         groups:
@@ -329,3 +352,4 @@
     ubuntu_version_codename: "{{ hostvars[ groups['control'][0] ].db_server_ubuntu_version_codename }}"
     mongo_server__skip_mongo_setup: "{{ not hostvars[ groups['control'][0] ].mongodb_server_deployed }}"
     mongo_skip_s3_backups: "{{ hostvars[ groups['control'][0] ].mongo_skip_s3_backups | default(false) }}"
+  when: not (skip_configure_db | default(false))
